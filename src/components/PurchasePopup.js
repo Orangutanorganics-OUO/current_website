@@ -31,6 +31,7 @@ function PurchasePopup() {
       clearTimeout(initialTimer);
       clearInterval(intervalTimer);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reviews]);
 
   const showRandomPopup = () => {

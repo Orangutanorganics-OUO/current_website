@@ -104,26 +104,8 @@ const NUTRITION = [
   }
 ];
 
-const LOGO_URL = "https://orangutanorganics.com/wp-content/uploads/2024/07/Orang-utan-color-logo-1.png";
-
 const ALL_TAGS = Array.from(new Set(NUTRITION.flatMap(n => n.tags))).sort();
 const ALL_NUTRIENTS = Array.from(new Set(NUTRITION.flatMap(n => n.nutrients.map(s => s.split(' (')[0])))).sort();
-
-function Header(){
-  return (
-    <header className="header">
-      <div className="header__inner">
-        <a className="header__brand" href="/">
-          <img className="header__logo" src={LOGO_URL} alt="Orang Utan Organics logo" />
-          <div className="header__title">
-            <span className="header__name">Orang Utan Organics</span>
-            <span className="header__tag">Powered by Mountain Farmers • Nutrition & Health Benefits</span>
-          </div>
-        </a>
-      </div>
-    </header>
-  );
-}
 
 function Controls({query,setQuery, nutrient, setNutrient, activeTags, setActiveTags, reset}){
   return (

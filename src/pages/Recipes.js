@@ -327,9 +327,6 @@ const RECIPES = [
   },
 ];
 
-const LOGO_URL =
-  "https://orangutanorganics.com/wp-content/uploads/2024/07/Orang-utan-color-logo-1.png";
-
 const ALL_INGREDIENTS = Array.from(
   new Set(RECIPES.flatMap((r) => r.ingredients))
 ).sort();

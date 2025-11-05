@@ -3,7 +3,6 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Navigation from './components/Navigation';
 import ScrollToTop from './components/ScrollToTop';
 import WhatsAppButton from './components/WhatsAppButton';
-import PurchasePopup from './components/PurchasePopup';
 import Home from './pages/Home';
 import Products from './pages/Products';
 import Cart from './pages/Cart';

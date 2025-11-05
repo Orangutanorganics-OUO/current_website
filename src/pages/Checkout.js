@@ -51,6 +51,7 @@ function Checkout() {
     if (customerData.pincode && customerData.pincode.length === 6) {
       calculateShippingCharges();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [customerData.pincode, paymentMode]);
 
   const handleInputChange = (e) => {

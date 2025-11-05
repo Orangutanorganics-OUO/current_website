@@ -102,24 +102,6 @@ const ALL_TAGS = Array.from(new Set(WHY_ITEMS.flatMap(i => i.tags || []))).sort(
 const ALL_YEARS = Array.from(new Set(WHY_ITEMS.map(i => i.year).filter(Boolean)));
 const ALL_REGIONS = Array.from(new Set(WHY_ITEMS.map(i => i.region).filter(Boolean)));
 
-const LOGO_URL = "https://orangutanorganics.com/wp-content/uploads/2024/07/Orang-utan-color-logo-1.png";
-
-function Header(){
-  return (
-    <header className="header">
-      <div className="header__inner">
-        <a className="header__brand" href="/">
-          <img className="header__logo" src={LOGO_URL} alt="Orang Utan Organics logo" />
-          <div className="header__title">
-            <span className="header__name">Orang Utan Organics</span>
-            <span className="header__tag">Powered by Mountain Farmers • Why It Matters</span>
-          </div>
-        </a>
-      </div>
-    </header>
-  );
-}
-
 function Controls({query,setQuery, type,setType, year,setYear, region,setRegion, tags,setTags, reset}){
   return (
     <section className="controls">

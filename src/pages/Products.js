@@ -150,6 +150,7 @@ function ProductDetail({ productId }) {
       const currentVariant = product.variants[selectedVariant];
       trackViewContent(product, currentVariant.price);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   if (!product) {

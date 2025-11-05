@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { trackLead } from '../utils/metaPixel';
 import './Contact.css';
-import { type } from '@testing-library/user-event/dist/type';
 
 function Contact() {
   const [formData, setFormData] = useState({
@@ -30,7 +29,7 @@ function Contact() {
     try {
       const GOOGLE_SCRIPT_URL = process.env.REACT_APP_GOOGLE_SCRIPT_URL || 'https://script.google.com/macros/s/AKfycbwjKA5VJLyfN_HKzAuznTOeT-COY6AmtFqM8PW4zxumEPwJouB0cOlFZqrngqEsy4jP/exec';
 
-      const response = await fetch(GOOGLE_SCRIPT_URL, {
+      await fetch(GOOGLE_SCRIPT_URL, {
         method: 'POST',
         mode: 'no-cors',
         headers: {
@@ -111,9 +110,9 @@ Uttarakhand-249135, India.</p>
           <div className="social-links">
             <h3>Follow Us</h3>
             <div className="social-icons">
-              <a href="https://www.facebook.com/profile.php?id=100085440072433#" target="_blank" rel="noopener" className="social-icon">Facebook</a>
-              <a href="https://www.instagram.com/orangutan.organics/" target="_blank" rel="noopener" className="social-icon">Instagram</a>
-              <a href="https://www.youtube.com/@orangutanorganics3277/videos" target="_blank" rel="noopener"className="social-icon">Youtube</a>
+              <a href="https://www.facebook.com/profile.php?id=100085440072433#" target="_blank" rel="noreferrer noopener" className="social-icon">Facebook</a>
+              <a href="https://www.instagram.com/orangutan.organics/" target="_blank" rel="noreferrer noopener" className="social-icon">Instagram</a>
+              <a href="https://www.youtube.com/@orangutanorganics3277/videos" target="_blank" rel="noreferrer noopener" className="social-icon">Youtube</a>
             </div>
           </div>
         </div>

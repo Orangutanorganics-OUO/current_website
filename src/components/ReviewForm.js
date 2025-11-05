@@ -35,7 +35,7 @@ function ReviewForm({ productName, onSubmitSuccess }) {
         display: 'No' // Default to No, admin will approve
       };
 
-      const response = await fetch(process.env.REACT_APP_GOOGLE_SCRIPT_URL || 'https://script.google.com/macros/s/AKfycbwjKA5VJLyfN_HKzAuznTOeT-COY6AmtFqM8PW4zxumEPwJouB0cOlFZqrngqEsy4jP/exec', {
+      await fetch(process.env.REACT_APP_GOOGLE_SCRIPT_URL || 'https://script.google.com/macros/s/AKfycbwjKA5VJLyfN_HKzAuznTOeT-COY6AmtFqM8PW4zxumEPwJouB0cOlFZqrngqEsy4jP/exec', {
         method: 'POST',
         mode: 'no-cors',
         headers: {
