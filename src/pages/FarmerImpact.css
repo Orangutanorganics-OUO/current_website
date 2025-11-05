@@ -1,0 +1,263 @@
+.farmer-impact-page {
+  min-height: 80vh;
+  padding: 40px 0 80px;
+}
+
+.impact-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+.value-chain {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  padding: 40px;
+  margin-bottom: 60px;
+}
+
+.value-chain h2 {
+  font-size: 32px;
+  font-weight: 700;
+  color: #0F5B2F;
+  margin: 0 0 16px 0;
+}
+
+.chain-intro {
+  font-size: 17px;
+  color: #6b7280;
+  margin: 0 0 32px 0;
+}
+
+.chain-visual {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.chain-item {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.chain-bar-container {
+  width: 100%;
+  background: #e5e7eb;
+  border-radius: 8px;
+  overflow: hidden;
+  height: 40px;
+}
+
+.chain-bar {
+  height: 100%;
+  background: linear-gradient(135deg, #0F5B2F 0%, #0a4422 100%);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 12px;
+  transition: width 0.5s ease;
+}
+
+.bar-label {
+  color: #fff;
+  font-weight: 700;
+  font-size: 16px;
+}
+
+.chain-details h3 {
+  font-size: 18px;
+  font-weight: 700;
+  color: #111827;
+  margin: 0 0 6px 0;
+}
+
+.chain-details p {
+  font-size: 14px;
+  color: #6b7280;
+  margin: 0;
+}
+
+.impact-stats {
+  margin-bottom: 60px;
+}
+
+.impact-stats h2 {
+  font-size: 32px;
+  font-weight: 700;
+  color: #0F5B2F;
+  margin: 0 0 32px 0;
+  text-align: center;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 24px;
+}
+
+.stat-card {
+  background: #F5F2EB;
+  padding: 28px;
+  border-radius: 12px;
+  text-align: center;
+  border: 1px solid #e5e7eb;
+}
+
+.stat-number {
+  font-size: 48px;
+  font-weight: 700;
+  color: #F46A1F;
+  margin-bottom: 8px;
+}
+
+.stat-label {
+  font-size: 16px;
+  font-weight: 700;
+  color: #0F5B2F;
+  margin-bottom: 8px;
+}
+
+.stat-card p {
+  font-size: 13px;
+  color: #6b7280;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.farmer-stories {
+  margin-bottom: 60px;
+}
+
+.farmer-stories h2 {
+  font-size: 32px;
+  font-weight: 700;
+  color: #0F5B2F;
+  margin: 0 0 32px 0;
+}
+
+.story-card {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  gap: 32px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  overflow: hidden;
+  margin-bottom: 24px;
+}
+
+.story-image {
+  height: 100%;
+}
+
+.story-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.story-content {
+  padding: 32px 32px 32px 0;
+  margin-top: auto;
+  margin-bottom: auto;
+}
+
+.story-content h3 {
+  font-size: 24px;
+  font-weight: 700;
+  color: #0F5B2F;
+  margin: 0 0 8px 0;
+}
+
+.story-location {
+  font-size: 14px;
+  color: #F46A1F;
+  font-weight: 600;
+  margin: 0 0 16px 0;
+}
+
+.story-content p {
+  font-size: 16px;
+  line-height: 1.7;
+  color: #374151;
+  margin: 0;
+}
+
+.commitments h2 {
+  font-size: 32px;
+  font-weight: 700;
+  color: #0F5B2F;
+  margin: 0 0 32px 0;
+  text-align: center;
+}
+
+.commitments-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+}
+
+.commitment-card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 28px;
+  text-align: center;
+  transition: all 0.3s ease;
+}
+
+.commitment-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.08);
+  border-color: #0F5B2F;
+}
+
+.commitment-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+
+.commitment-card h3 {
+  font-size: 18px;
+  font-weight: 700;
+  color: #0F5B2F;
+  margin: 0 0 12px 0;
+}
+
+.commitment-card p {
+  font-size: 14px;
+  line-height: 1.6;
+  color: #6b7280;
+  margin: 0;
+}
+
+@media (max-width: 1024px) {
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .commitments-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .story-card {
+    grid-template-columns: 1fr;
+  }
+
+  .story-content {
+    padding: 24px;
+  }
+}
+
+@media (max-width: 640px) {
+  .stats-grid,
+  .commitments-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .page-header h1 {
+    font-size: 32px;
+  }
+}
