@@ -1,0 +1,31 @@
+/***** FAQ Page Scoped Styles *****/
+
+/***** Controls *****/
+.faq-controls{max-width:1200px;margin:18px auto 8px;padding:0 20px;display:grid;gap:12px;grid-template-columns: 1fr auto}
+@media (max-width: 640px){ .faq-controls{grid-template-columns: 1fr} }
+.faq-input{background:#ffffff;border:1px solid rgba(0,0,0,.08);padding:10px 12px;border-radius:12px;display:flex;gap:10px;align-items:center;box-shadow:0 1px 0 rgba(0,0,0,.02),0 1px 12px rgba(15,91,47,.03)}
+.faq-input input{border:0;outline:0;background:transparent;width:100%;font-size:14px;color:#111827}
+.faq-btn{appearance:none;border:1px solid rgba(0,0,0,.08);background:#ffffff;padding:10px 14px;border-radius:12px;font-weight:600;cursor:pointer;box-shadow:0 1px 0 rgba(0,0,0,.02),0 1px 10px rgba(46,35,80,.06)}
+.faq-btn--primary{background:#0F5B2F;border-color:transparent;color:white}
+.faq-btn:focus{outline:2px solid rgba(15,91,47,0.22);outline-offset:2px}
+
+/***** Layout *****/
+.faq-container{max-width:1200px;margin:0 auto;padding:16px 20px 60px}
+.faq-grid{display:grid;gap:16px;grid-template-columns: repeat(12, 1fr)}
+.faq-col-span-12{grid-column: span 12}
+@media (max-width:1280px){ .faq-grid{grid-template-columns: repeat(12, 1fr)} }
+@media (max-width:1024px){ .faq-grid{grid-template-columns: repeat(8, 1fr)} .faq-col-span-12{grid-column: span 8} }
+@media (max-width:640px){ .faq-grid{grid-template-columns: repeat(4, 1fr)} .faq-col-span-12{grid-column: span 4} }
+.faq-card{background:#ffffff;border:1px solid rgba(0,0,0,.06);border-radius:16px;overflow:hidden;box-shadow:0 2px 0 rgba(0,0,0,.02),0 8px 30px rgba(0,0,0,.04);display:flex;flex-direction:column;}
+.faq-card__band{height:6px;background:linear-gradient(90deg,#0F5B2F,#2E2350)}
+.faq-card__body{padding:8px 14px 14px;color:#374151;font-size:14px}
+
+/***** FAQ Specific *****/
+.faq__q{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;background:#fff;border:0;text-align:left;font-weight:700;font-size:16px;cursor:pointer;width:100%}
+.faq__q:hover{background:#fafafa}
+.faq__qtext{flex:1}
+.faq__icon{font-size:22px;line-height:1;color:#9CA3AF}
+.faq__a{margin:0;color:#374151}
+
+/***** Empty State *****/
+.faq-empty{margin:60px auto;text-align:center;color:#6b7280}

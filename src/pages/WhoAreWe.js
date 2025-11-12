@@ -51,6 +51,12 @@ function WhoAreWe() {
               <p>See our impact stories, projects, and commitment to sustainable farming</p>
               <span className="quick-link-arrow">Learn More →</span>
             </Link>
+            <Link to="/who-are-we/faq" className="quick-link-card">
+              <div className="quick-link-icon">ℹ️</div>
+              <h3>FAQ</h3>
+              <p>See Frequently Asked Quesions</p>
+              <span className="quick-link-arrow">Learn More →</span>
+            </Link>
           </div>
         </div>
       </section>

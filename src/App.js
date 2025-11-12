@@ -17,6 +17,7 @@ import FarmerImpact from './pages/FarmerImpact';
 import Recipes from './pages/Recipes';
 import Nutrition from './pages/Nutrition';
 import Matters from './pages/Matters';
+import Faq from './pages/Faq';
 import './App.css';
 
 function App() {
@@ -60,6 +61,7 @@ function App() {
             <Route path="/who-are-we/traceability" element={<Traceability />} />
             <Route path="/who-are-we/farmer-impact" element={<FarmerImpact />} />
             <Route path="/who-are-we/recipes" element={<Recipes />} />
+            <Route path="/who-are-we/faq" element={<Faq />} />
             <Route path="/nutrition" element={<Nutrition />} />
             <Route path="/why-it-matters" element={<Matters />} />
           </Routes>

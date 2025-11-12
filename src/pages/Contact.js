@@ -206,22 +206,22 @@ Uttarakhand-249135, India.</p>
         </form>
       </div>
 
-      <div className="faq-section">
+      <div className="faq_C-section">
         <h2>Frequently Asked Questions</h2>
-        <div className="faq-grid">
-          <div className="faq-item">
+        <div className="faq_C-grid">
+          <div className="faq_C-item">
             <h3>What are your shipping charges?</h3>
             <p>Shipping charges are calculated based on your location and order weight at checkout.</p>
           </div>
-          <div className="faq-item">
+          <div className="faq_C-item">
             <h3>Do you ship internationally?</h3>
             <p>Currently, we only ship within India. International shipping coming soon!</p>
           </div>
-          <div className="faq-item">
+          <div className="faq_C-item">
             <h3>Are your products certified organic?</h3>
             <p>Yes, all our products are 100% organic and sourced directly from certified Himalayan farms.</p>
           </div>
-          <div className="faq-item">
+          <div className="faq_C-item">
             <h3>What payment methods do you accept?</h3>
             <p>We accept prepaid payments via UPI, cards, and net banking, as well as Cash on Delivery (COD).</p>
           </div>
