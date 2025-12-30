@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import './Navigation.css';
 import logo from "../utils/Orang-utan-color-logo-1.png"
@@ -6,6 +6,20 @@ import logo from "../utils/Orang-utan-color-logo-1.png"
 function Navigation({ cartCount }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const location = useLocation();
+  const [snowflakes, setSnowflakes] = useState([]);
+
+  useEffect(() => {
+    // Generate subtle snowflakes
+    const flakes = Array.from({ length: 15 }, (_, i) => ({
+      id: i,
+      left: Math.random() * 100,
+      animationDuration: 5 + Math.random() * 7,
+      animationDelay: Math.random() * 5,
+      fontSize: 8 + Math.random() * 6,
+      opacity: 0.3 + Math.random() * 0.4
+    }));
+    setSnowflakes(flakes);
+  }, []);
 
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
@@ -15,12 +29,40 @@ function Navigation({ cartCount }) {
     setIsMenuOpen(false);
   };
 
+  const snowfallKeyframes = `
+    @keyframes snowfall {
+      0% {
+        transform: translateY(-10px) translateX(0);
+      }
+      100% {
+        transform: translateY(100vh) translateX(20px);
+      }
+    }
+
+    @media (max-width: 768px) {
+      .new-year-banner-text {
+        font-size: 11px !important;
+        padding: 0 15px !important;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .new-year-banner-text {
+        font-size: 9px !important;
+        padding: 0 10px !important;
+      }
+    }
+  `;
+
   return (
     <header className="header">
+      <style>{snowfallKeyframes}</style>
+
+      {/* New Year Sale Banner with subtle Snowfall */}
       <div
   style={{
     height: "4vh",
-    background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+    background: "linear-gradient(135deg, #2d5aa0 0%, #1e3a5f 100%)",
     fontStyle:"normal",
     textAlign: "center",
     display: "flex",
@@ -29,11 +71,33 @@ function Navigation({ cartCount }) {
     fontWeight: "600",
     color: "#fff",
     position: "relative",
-    overflow: "hidden"
+    overflow: "hidden",
+    padding: "0 20px"
   }}
 >
-  <span style={{ position: "relative", zIndex: 2 }}>
-    🎉 NEW YEAR SALE - 10% OFF on 2+ Items | ✨ FREE DELIVERY ABOVE ₹1000 ✨
+  {/* Subtle Snowflakes */}
+  {snowflakes.map(flake => (
+    <div
+      key={flake.id}
+      style={{
+        position: "absolute",
+        left: `${flake.left}%`,
+        top: "-10px",
+        color: "#fff",
+        fontSize: `${flake.fontSize}px`,
+        opacity: flake.opacity,
+        animation: `snowfall ${flake.animationDuration}s linear ${flake.animationDelay}s infinite`,
+        pointerEvents: "none",
+        userSelect: "none"
+      }}
+    >
+      ❄
+    </div>
+  ))}
+
+  {/* Banner Text */}
+  <span className="new-year-banner-text" style={{ position: "relative", zIndex: 2 }}>
+    ❄️ NEW YEAR SALE - 10% OFF on 2+ Items | FREE DELIVERY ABOVE ₹1000
   </span>
 </div>
 
