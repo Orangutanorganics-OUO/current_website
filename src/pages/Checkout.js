@@ -65,6 +65,18 @@ function Checkout() {
     return cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   };
 
+  const getTotalQuantity = () => {
+    return cart.reduce((sum, item) => sum + item.quantity, 0);
+  };
+
+  const calculateDiscount = () => {
+    const totalQty = getTotalQuantity();
+    if (totalQty > 1) {
+      return Math.round(calculateSubtotal() * 0.10); // 10% discount
+    }
+    return 0;
+  };
+
   const calculateTotalWeight = () => {
     return cart.reduce((sum, item) => sum + (item.weight * item.quantity), 0);
   };
@@ -133,7 +145,8 @@ function Checkout() {
 
   const calculateTotal = () => {
     const subtotal = calculateSubtotal();
-    return subtotal + shippingCharge + codCharge;
+    const discount = calculateDiscount();
+    return subtotal - discount + shippingCharge + codCharge;
   };
 
   const validateForm = () => {
@@ -165,6 +178,7 @@ function Checkout() {
       const orderId = `OUO_${Date.now()}`;
       const totalWeight = calculateTotalWeight();
       const subtotal = calculateSubtotal();
+      const discount = calculateDiscount();
       const totalAmount = calculateTotal();
 
       // Prepare product description for Delhivery
@@ -240,6 +254,7 @@ function Checkout() {
         paymentMode: 'COD',
         paymentStatus: 'Pending',
         subtotal,
+        discount,
         shippingCharge,
         codCharge,
         total: totalAmount
@@ -305,6 +320,7 @@ function Checkout() {
       const orderId = `OUO_${Date.now()}`;
       const totalAmount = calculateTotal();
       const subtotal = calculateSubtotal();
+      const discount = calculateDiscount();
       const totalWeight = calculateTotalWeight();
 
       // Step 1: Create Razorpay order via backend
@@ -408,6 +424,7 @@ function Checkout() {
                 paymentMode: 'Prepaid',
                 paymentStatus: 'Completed',
                 subtotal,
+                discount,
                 shippingCharge,
                 codCharge: 0,
                 total: totalAmount
@@ -503,6 +520,7 @@ function Checkout() {
   };
 
   const subtotal = calculateSubtotal();
+  const discount = calculateDiscount();
   const total = calculateTotal();
 
   return (
@@ -674,6 +692,13 @@ function Checkout() {
                 <span>Subtotal (GST included)</span>
                 <span>₹{subtotal}</span>
               </div>
+
+              {discount > 0 && (
+                <div className="calc-row" style={{ color: '#28a745', fontWeight: '600' }}>
+                  <span>🎉 New Year Sale (10% OFF)</span>
+                  <span>-₹{discount}</span>
+                </div>
+              )}
 
               {isCalculatingShipping ? (
                 <div className="calc-row">

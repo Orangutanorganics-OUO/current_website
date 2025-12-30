@@ -36,6 +36,18 @@ function Cart() {
     return cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   };
 
+  const getTotalQuantity = () => {
+    return cart.reduce((sum, item) => sum + item.quantity, 0);
+  };
+
+  const calculateDiscount = () => {
+    const totalQty = getTotalQuantity();
+    if (totalQty > 1) {
+      return Math.round(calculateSubtotal() * 0.10); // 10% discount
+    }
+    return 0;
+  };
+
   const handleCheckout = () => {
     if (cart.length === 0) {
       alert('Your cart is empty');
@@ -60,6 +72,8 @@ function Cart() {
   }
 
   const subtotal = calculateSubtotal();
+  const discount = calculateDiscount();
+  const finalSubtotal = subtotal - discount;
 
   return (
     <div className="cart-page">
@@ -125,6 +139,13 @@ function Cart() {
               <span>₹{subtotal}</span>
             </div>
 
+            {discount > 0 && (
+              <div className="summary-row" style={{ color: '#28a745', fontWeight: '600' }}>
+                <span>🎉 New Year Sale (10% OFF)</span>
+                <span>-₹{discount}</span>
+              </div>
+            )}
+
             <div className="summary-row summary-note">
               <span>Shipping charges</span>
               <span>Calculated at checkout</span>
@@ -134,7 +155,7 @@ function Cart() {
 
             <div className="summary-row summary-total">
               <span>Subtotal</span>
-              <span>₹{subtotal}</span>
+              <span>₹{finalSubtotal}</span>
             </div>
 
             <button className="btn btn--primary btn--large btn--full" onClick={handleCheckout}>

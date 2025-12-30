@@ -17,18 +17,24 @@ function Navigation({ cartCount }) {
 
   return (
     <header className="header">
-      <div 
+      <div
   style={{
     height: "4vh",
-    backgroundColor: "#5ba3f8",
+    background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
     fontStyle:"normal",
     textAlign: "center",
     display: "flex",
-    alignItems: "center",  // Vertically centers the text
-    justifyContent: "center"  // Horizontally centers the text
+    alignItems: "center",
+    justifyContent: "center",
+    fontWeight: "600",
+    color: "#fff",
+    position: "relative",
+    overflow: "hidden"
   }}
 >
-  FREE DELIVERY ACROSS INDIA ABOVE 1000/-
+  <span style={{ position: "relative", zIndex: 2 }}>
+    🎉 NEW YEAR SALE - 10% OFF on 2+ Items | ✨ FREE DELIVERY ABOVE ₹1000 ✨
+  </span>
 </div>
 
       <div className="header__inner">
