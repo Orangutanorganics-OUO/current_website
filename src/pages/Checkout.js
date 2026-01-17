@@ -65,14 +65,10 @@ function Checkout() {
     return cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   };
 
-  const getTotalQuantity = () => {
-    return cart.reduce((sum, item) => sum + item.quantity, 0);
-  };
-
   const calculateDiscount = () => {
-    const totalQty = getTotalQuantity();
-    if (totalQty > 1) {
-      return Math.round(calculateSubtotal() * 0.10); // 10% discount
+    const totalWeight = calculateTotalWeight();
+    if (totalWeight >= 3000) {
+      return Math.round(calculateSubtotal() * 0.20); // 20% discount for 3kg or more
     }
     return 0;
   };
@@ -695,7 +691,7 @@ function Checkout() {
 
               {discount > 0 && (
                 <div className="calc-row" style={{ color: '#28a745', fontWeight: '600' }}>
-                  <span>🎉 New Year Sale (10% OFF)</span>
+                  <span>Bulk Discount (20% OFF)</span>
                   <span>-₹{discount}</span>
                 </div>
               )}
