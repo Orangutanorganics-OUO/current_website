@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { trackInitiateCheckout, trackPurchase } from '../utils/metaPixel';
+import { validateCoupon, calculateCouponDiscount, getCouponDiscount } from '../utils/coupons';
 import Toast from '../components/Toast';
 import './Checkout.css';
 
@@ -32,6 +33,8 @@ function Checkout() {
   const [isCalculatingShipping, setIsCalculatingShipping] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [toast, setToast] = useState(null);
+  const [couponCode, setCouponCode] = useState('');
+  const [appliedCoupons, setAppliedCoupons] = useState([]);
 
   useEffect(() => {
     const cartData = JSON.parse(localStorage.getItem('cart') || '[]');
@@ -65,12 +68,54 @@ function Checkout() {
     return cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   };
 
+  const calculateCouponTotalDiscount = () => {
+    const subtotal = calculateSubtotal();
+    return appliedCoupons.reduce((total, coupon) => {
+      return total + calculateCouponDiscount(subtotal, coupon.code);
+    }, 0);
+  };
+
   const calculateDiscount = () => {
     const totalWeight = calculateTotalWeight();
-    if (totalWeight >= 3000) {
-      return Math.round(calculateSubtotal() * 0.20); // 20% discount for 3kg or more
+    const bulkDiscount = totalWeight >= 3000 ? Math.round(calculateSubtotal() * 0.20) : 0;
+    return bulkDiscount + calculateCouponTotalDiscount();
+  };
+
+  const handleApplyCoupon = () => {
+    if (!couponCode.trim()) {
+      setToast({ message: 'Please enter a coupon code', type: 'error' });
+      return;
     }
-    return 0;
+
+    // Check if coupon is already applied
+    if (appliedCoupons.some(c => c.code === couponCode.toUpperCase())) {
+      setToast({ message: 'This coupon is already applied', type: 'error' });
+      return;
+    }
+
+    if (validateCoupon(couponCode)) {
+      const subtotal = calculateSubtotal();
+      const discountAmount = calculateCouponDiscount(subtotal, couponCode);
+      const discountPercent = getCouponDiscount(couponCode);
+
+      setAppliedCoupons([...appliedCoupons, {
+        code: couponCode.toUpperCase(),
+        amount: discountAmount,
+        percent: discountPercent
+      }]);
+      setCouponCode('');
+      setToast({
+        message: `Coupon applied! You saved ₹${discountAmount} (${discountPercent}% off)`,
+        type: 'success'
+      });
+    } else {
+      setToast({ message: 'Invalid coupon code', type: 'error' });
+    }
+  };
+
+  const handleRemoveCoupon = (couponToRemove) => {
+    setAppliedCoupons(appliedCoupons.filter(c => c.code !== couponToRemove));
+    setToast({ message: 'Coupon removed', type: 'success' });
   };
 
   const calculateTotalWeight = () => {
@@ -250,8 +295,8 @@ function Checkout() {
         paymentMode: 'COD',
         paymentStatus: 'Pending',
         subtotal,
-        discount,
         shippingCharge,
+        discountAmount: discount,
         codCharge,
         total: totalAmount
       };
@@ -420,8 +465,8 @@ function Checkout() {
                 paymentMode: 'Prepaid',
                 paymentStatus: 'Completed',
                 subtotal,
-                discount,
                 shippingCharge,
+                discountAmount: discount,
                 codCharge: 0,
                 total: totalAmount
               };
@@ -683,18 +728,64 @@ function Checkout() {
               ))}
             </div>
 
+            <div className="coupon-section">
+              <div className="coupon-input-wrapper">
+                <input
+                  type="text"
+                  className="coupon-input"
+                  placeholder="Enter coupon code"
+                  value={couponCode}
+                  onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                  onKeyDown={(e) => e.key === 'Enter' && handleApplyCoupon()}
+                />
+                <button
+                  className="btn-apply-coupon"
+                  onClick={handleApplyCoupon}
+                >
+                  Apply
+                </button>
+              </div>
+
+              {appliedCoupons.length > 0 && (
+                <div className="applied-coupons-list">
+                  {appliedCoupons.map((coupon, index) => (
+                    <div key={index} className="coupon-applied">
+                      <div className="coupon-badge">
+                        <span className="coupon-icon">🎉</span>
+                        <span className="coupon-text">{coupon.code}</span>
+                        <span className="coupon-savings">-₹{coupon.amount}</span>
+                      </div>
+                      <button
+                        className="btn-remove-coupon"
+                        onClick={() => handleRemoveCoupon(coupon.code)}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
             <div className="summary-calculations">
               <div className="calc-row">
                 <span>Subtotal (GST included)</span>
                 <span>₹{subtotal}</span>
               </div>
 
-              {discount > 0 && (
+              {calculateTotalWeight() >= 3000 && (
                 <div className="calc-row" style={{ color: '#28a745', fontWeight: '600' }}>
                   <span>Bulk Discount (20% OFF)</span>
-                  <span>-₹{discount}</span>
+                  <span>-₹{Math.round(calculateSubtotal() * 0.20)}</span>
                 </div>
               )}
+
+              {appliedCoupons.map((coupon, index) => (
+                <div key={index} className="calc-row" style={{ color: '#059669', fontWeight: '600' }}>
+                  <span>Coupon Discount ({coupon.code})</span>
+                  <span>-₹{coupon.amount}</span>
+                </div>
+              ))}
 
               {isCalculatingShipping ? (
                 <div className="calc-row">
