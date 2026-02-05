@@ -58,8 +58,8 @@ function Checkout() {
   }, [customerData.pincode, paymentMode]);
 
   const cleanPhoneNumber = (phone) => {
-    // Remove all spaces, dashes, and other non-numeric characters except +
-    return phone.replace(/[\s\-()]/g, '');
+    // Remove all spaces and keep only digits and +
+    return phone.trim().replace(/\s+/g, '').replace(/[^\d+]/g, '');
   };
 
   const handleInputChange = (e) => {
@@ -603,7 +603,7 @@ function Checkout() {
                     name="phone"
                     value={customerData.phone}
                     onChange={handleInputChange}
-                    placeholder="+91 XXXXX XXXXX"
+                    placeholder="+91 XXXXXXXXXX"
                     required
                   />
                 </div>
