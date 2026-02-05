@@ -57,6 +57,11 @@ function Checkout() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [customerData.pincode, paymentMode]);
 
+  const cleanPhoneNumber = (phone) => {
+    // Remove all spaces, dashes, and other non-numeric characters except +
+    return phone.replace(/[\s\-()]/g, '');
+  };
+
   const handleInputChange = (e) => {
     setCustomerData({
       ...customerData,
@@ -202,7 +207,8 @@ function Checkout() {
       return false;
     }
 
-    if (!/^\d{10}$/.test(customerData.phone.replace(/[^0-9]/g, ''))) {
+    const cleanedPhone = cleanPhoneNumber(customerData.phone).replace(/[^0-9]/g, '');
+    if (!/^\d{10}$/.test(cleanedPhone)) {
       setToast({ message: 'Please enter a valid 10-digit phone number', type: 'error' });
       return false;
     }
@@ -233,6 +239,7 @@ function Checkout() {
       }
 
       // Create Delhivery shipment
+      const cleanedPhone = cleanPhoneNumber(customerData.phone);
       const shipmentData = {
         name: customerData.name,
         add: `${customerData.address1} ${customerData.address2}`.trim(),
@@ -240,7 +247,7 @@ function Checkout() {
         city: customerData.city || '',
         state: customerData.state || '',
         country: 'India',
-        phone: customerData.phone,
+        phone: cleanedPhone,
         order: orderId,
         payment_mode: 'COD',
         return_pin: '',
@@ -281,7 +288,7 @@ function Checkout() {
         timestamp: new Date().toISOString(),
         name: customerData.name,
         email: customerData.email,
-        phone: customerData.phone,
+        phone: cleanedPhone,
         address: `${customerData.address1} ${customerData.address2}`.trim(),
         pincode: customerData.pincode,
         city: customerData.city,
@@ -423,6 +430,7 @@ function Checkout() {
                 productsDesc += `+ shipping charge ${shippingCharge}`;
               }
 
+              const cleanedPhone = cleanPhoneNumber(customerData.phone);
               const shipmentData = {
                 name: customerData.name,
                 add: `${customerData.address1} ${customerData.address2}`.trim(),
@@ -430,7 +438,7 @@ function Checkout() {
                 city: customerData.city || '',
                 state: customerData.state || '',
                 country: 'India',
-                phone: customerData.phone,
+                phone: cleanedPhone,
                 order: orderId,
                 payment_mode: 'Prepaid',
                 products_desc: productsDesc,
@@ -451,7 +459,7 @@ function Checkout() {
                 timestamp: new Date().toISOString(),
                 name: customerData.name,
                 email: customerData.email,
-                phone: customerData.phone,
+                phone: cleanedPhone,
                 address: `${customerData.address1} ${customerData.address2}`.trim(),
                 pincode: customerData.pincode,
                 city: customerData.city,
@@ -516,7 +524,7 @@ function Checkout() {
           prefill: {
             name: customerData.name,
             email: customerData.email,
-            contact: customerData.phone
+            contact: cleanPhoneNumber(customerData.phone)
           },
           theme: {
             color: '#0F5B2F'
