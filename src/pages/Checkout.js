@@ -569,7 +569,7 @@ function Checkout() {
   };
 
   const subtotal = calculateSubtotal();
-  const discount = calculateDiscount();
+  // const discount = calculateDiscount();
   const total = calculateTotal();
 
   return (
