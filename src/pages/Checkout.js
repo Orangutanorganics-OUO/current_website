@@ -11,7 +11,7 @@ const CONFIG = {
   // Backend API URL - Update after deploying to Render.com
   // For local development: http://localhost:5000/api
   // For production: https://your-app.onrender.com/api
-  API_BASE_URL: 'https://new-whatsapp-shopping.onrender.com/api'
+  API_BASE_URL: 'https://api.orangutanorganics.com/api'
 };
 
 function Checkout() {
