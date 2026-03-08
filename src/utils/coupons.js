@@ -4,6 +4,7 @@
 export const COUPONS = {
   // Format: "COUPON_CODE": discount percentage (0-100)
   "OUO10": 10,       // 10% discount
+  "HER11": 11,       // 11% WOMENS DAY DISCOUNT
 };
 
 // Helper function to validate coupon code
