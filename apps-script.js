@@ -7,6 +7,16 @@ const CONTACT_SHEET = 'Contact Submissions';
 const REVIEW_SHEET = 'Reviews';
 const CHECKOUT_SHEET = 'Orders';
 
+// Product → HSN Mapping for GST Invoice
+const HSN_MAP = {
+  "Himalayan Red Rajma": "07133300",
+  "Himalayan White Rajma": "07133300",
+  "Himalayan Red Rice": "10061090",
+  "Badri Cow Ghee": "040590",
+  "Himalayan Black Soyabean": "1201",
+  "Wild Himalayan Tempering Spice": "07129090"
+};
+
 // ===== ENTRY POINT =====
 function doPost(e) {
   try {
@@ -322,7 +332,15 @@ function sendOrderAdminNotification(data) {
     </div>
   `;
 
-  MailApp.sendEmail({ to: ADMIN_EMAIL, subject, htmlBody });
+  // Generate and attach PDF invoice
+  const invoicePDF = generateInvoicePDF(data);
+
+  MailApp.sendEmail({
+    to: ADMIN_EMAIL,
+    subject: subject,
+    htmlBody: htmlBody,
+    attachments: [invoicePDF]
+  });
 }
 
 function sendOrderCustomerConfirmation(data) {
@@ -436,7 +454,15 @@ function sendOrderCustomerConfirmation(data) {
   `;
 
   try {
-    MailApp.sendEmail({ to: data.email, subject, htmlBody });
+    // Generate and attach PDF invoice
+    const invoicePDF = generateInvoicePDF(data);
+
+    MailApp.sendEmail({
+      to: data.email,
+      subject: subject,
+      htmlBody: htmlBody,
+      attachments: [invoicePDF]
+    });
   } catch (error) {
     console.error('Error sending order confirmation:', error);
   }
@@ -450,6 +476,285 @@ function getOrCreateSheet(name) {
   let sheet = ss.getSheetByName(name);
   if (!sheet) sheet = ss.insertSheet(name);
   return sheet;
+}
+
+// Helper: Download logo and convert to Base64
+function getLogoBase64() {
+  const url = "https://orangutanorganics.com/static/media/Orang-utan-color-logo-1.df123e4b4aafc86a4500.png";
+  const response = UrlFetchApp.fetch(url);
+  const blob = response.getBlob();
+  return Utilities.base64Encode(blob.getBytes());
+}
+
+// Generate GST Invoice PDF
+function generateInvoicePDF(data) {
+  const logoBase64 = getLogoBase64();
+
+  // Generate product rows with corrected GST calculation
+  // NOTE: Product prices INCLUDE 5% GST
+  // So Net Amount = Price / 1.05, Tax = Net * 0.05, Total = Price
+  let productRows = '';
+  let totalNetAmount = 0;
+  let totalTaxAmount = 0;
+  let totalAmount = 0;
+
+  if (data.products && Array.isArray(data.products)) {
+    data.products.forEach(p => {
+      const hsn = HSN_MAP[p.name] || "";
+      const priceWithGST = p.price; // This already includes 5% GST
+      const netPerUnit = priceWithGST / 1.05; // Remove GST to get net price
+      const netAmount = netPerUnit * p.quantity;
+      const taxRate = 5;
+      const taxAmount = netAmount * (taxRate / 100);
+      const total = netAmount + taxAmount; // This equals priceWithGST * quantity
+
+      totalNetAmount += netAmount;
+      totalTaxAmount += taxAmount;
+      totalAmount += total;
+
+      productRows += `
+      <tr>
+        <td>${p.name} (${p.size})</td>
+        <td>${hsn}</td>
+        <td class="right">${netPerUnit.toFixed(2)}</td>
+        <td class="right">${p.quantity}</td>
+        <td class="right">${netAmount.toFixed(2)}</td>
+        <td class="right">${taxRate}</td>
+        <td class="right">IGST</td>
+        <td class="right">${taxAmount.toFixed(2)}</td>
+        <td class="right">${total.toFixed(2)}</td>
+      </tr>
+      `;
+    });
+  }
+
+  // Calculate final amounts
+  const discountAmount = data.discountAmount || 0;
+  const shippingCharge = data.shippingCharge || 0;
+  const codCharge = data.codCharge || 0;
+  const finalTotal = totalAmount - discountAmount + shippingCharge + codCharge;
+
+  // Format date
+  const orderDate = data.timestamp ? new Date(data.timestamp) : new Date();
+  const formattedDate = orderDate.toLocaleDateString('en-IN');
+
+  const html = `
+  <html>
+  <head>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 30px;
+      font-size: 13px;
+      color: #000;
+    }
+
+    .title {
+      text-align: center;
+      font-size: 22px;
+      font-weight: bold;
+    }
+
+    .subtitle {
+      text-align: center;
+      font-size: 12px;
+      margin-bottom: 20px;
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+
+    .logo {
+      width: 130px;
+    }
+
+    .company {
+      margin-left: 15px;
+      line-height: 1.6;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 12px;
+    }
+
+    th, td {
+      border: 1px solid #000;
+      padding: 6px;
+      vertical-align: top;
+    }
+
+    th {
+      background: #f2f2f2;
+      text-align: left;
+    }
+
+    .no-border td {
+      border: none;
+      padding: 3px 0;
+    }
+
+    .right {
+      text-align: right;
+    }
+
+    .center {
+      text-align: center;
+    }
+
+    .bold {
+      font-weight: bold;
+    }
+
+    .signature {
+      margin-top: 50px;
+      text-align: right;
+    }
+
+  </style>
+  </head>
+
+  <body>
+
+  <div class="title">Tax Invoice/Bill of Supply/Cash Memo</div>
+  <div class="subtitle">(Original for Recipient)</div>
+
+  <div class="header">
+    <img src="data:image/png;base64,${logoBase64}" class="logo">
+    <div class="company">
+      <strong>Orang Utan Organics LLP</strong><br>
+      Village - Bhangeli, Gangnani,<br>
+      Uttarkashi, Uttarakhand, 249135, IN.<br>
+      GSTIN: 05AAJFO2664F1ZB
+    </div>
+  </div>
+
+  <table>
+    <tr>
+      <td><strong>Order Number:</strong> ${data.orderId}</td>
+      <td><strong>Invoice Number:</strong> ${data.orderId}</td>
+    </tr>
+    <tr>
+      <td><strong>Order Date:</strong> ${formattedDate}</td>
+      <td><strong>Invoice Date:</strong> ${formattedDate}</td>
+    </tr>
+  </table>
+
+  <table>
+    <tr>
+      <th>Billing Address</th>
+      <th>Shipping Address</th>
+    </tr>
+    <tr>
+      <td>
+        ${data.name}<br>
+        ${data.address}<br>
+        ${data.city}, ${data.state} - ${data.pincode}<br>
+        Phone: ${data.phone}<br>
+        Place of supply: ${data.state}
+      </td>
+      <td>
+        ${data.name}<br>
+        ${data.address}<br>
+        ${data.city}, ${data.state} - ${data.pincode}<br>
+        Phone: ${data.phone}<br>
+        Place of delivery: ${data.state}
+      </td>
+    </tr>
+  </table>
+
+  <table>
+  <tr>
+    <th>Product</th>
+    <th>HSN Code</th>
+    <th>Unit Price (Net)</th>
+    <th>Qty</th>
+    <th>Net Amount</th>
+    <th>Tax Rate %</th>
+    <th>Tax Type</th>
+    <th>Tax Amount</th>
+    <th>Total Amount</th>
+  </tr>
+
+  ${productRows}
+
+</table>
+
+<table>
+  <tr>
+    <td colspan="8" class="center bold">Total</td>
+    <td class="right bold">${totalAmount.toFixed(2)}</td>
+  </tr>
+
+  ${discountAmount > 0 ? `
+  <tr>
+    <td colspan="8" class="center bold">Discount</td>
+    <td class="right" style="color: #059669;">-${discountAmount.toFixed(2)}</td>
+  </tr>
+  ` : ''}
+
+  ${shippingCharge > 0 ? `
+  <tr>
+    <td colspan="8" class="center bold">Shipping Charges</td>
+    <td class="right">${shippingCharge.toFixed(2)}</td>
+  </tr>
+  ` : ''}
+
+  ${codCharge > 0 ? `
+  <tr>
+    <td colspan="8" class="center bold">COD Charges</td>
+    <td class="right">${codCharge.toFixed(2)}</td>
+  </tr>
+  ` : ''}
+
+  <tr>
+    <td colspan="8" class="center bold" style="font-size: 16px;">Net Amount Payable</td>
+    <td class="right bold" style="font-size: 16px; color: #F46A1F;">₹${finalTotal.toFixed(2)}</td>
+  </tr>
+</table>
+
+${data.paymentId ? `
+<table>
+    <tr>
+      <td><strong>Payment Transaction ID</strong></td>
+      <td>${data.paymentId}</td>
+    </tr>
+    <tr>
+      <td><strong>Date & Time</strong></td>
+      <td>${formattedDate}</td>
+    </tr>
+    <tr>
+      <td><strong>Mode of Payment</strong></td>
+      <td>${data.paymentMode}</td>
+    </tr>
+  </table>
+` : `
+<table>
+    <tr>
+      <td><strong>Mode of Payment</strong></td>
+      <td>${data.paymentMode}</td>
+    </tr>
+  </table>
+`}
+
+  <div class="signature">
+    <p><strong>For Orang Utan Organics LLP</strong></p>
+    <br><br>
+    <p>Authorized Signatory</p>
+  </div>
+
+  </body>
+  </html>
+  `;
+
+  const blob = Utilities.newBlob(html, "text/html");
+  const pdf = blob.getAs("application/pdf").setName(`Invoice_${data.orderId}.pdf`);
+
+  return pdf;
 }
 
 // =====================================================
