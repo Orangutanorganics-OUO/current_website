@@ -26,8 +26,8 @@ export const PRODUCTS = [
       "https://raw.githubusercontent.com/Orangutanorganics-OUO/image_repo/refs/heads/main/White_Rajma/wr_5.png"
     ],
     variants: [
-      { size: "500gm", price: 347, stock: 100, weight: 500 },
-      { size: "1kg", price: 691, stock: 100, weight: 1000 }
+      { size: "500gm", price: 347, stock: 100, weight: 500, available: true },
+      { size: "1kg", price: 691, stock: 100, weight: 1000, available: true }
     ],
     benefits: ["High Protein", "Rich in Fiber", "Organic", "Himalayan Sourced"]
   },
@@ -57,8 +57,8 @@ export const PRODUCTS = [
       "https://raw.githubusercontent.com/Orangutanorganics-OUO/image_repo/refs/heads/main/Red_Rajma/rrj_4.png"
     ],
     variants: [
-      { size: "500gm", price: 347, stock: 100, weight: 500 },
-      { size: "1kg", price: 691, stock: 100, weight: 1000 }
+      { size: "500gm", price: 347, stock: 100, weight: 500, available: true },
+      { size: "1kg", price: 691, stock: 100, weight: 1000, available: true }
     ],
     benefits: ["High Protein", "Rich in Iron", "Organic", "Traditional Taste"]
   },
@@ -89,9 +89,9 @@ export const PRODUCTS = [
       "https://raw.githubusercontent.com/Orangutanorganics-OUO/image_repo/refs/heads/main/Ghee/g_4.png",
     ],
     variants: [
-      { size: "120gm", price: 450, stock: 50, weight: 120 },
-      { size: "295gm", price: 1067, stock: 50, weight: 295 },
-      { size: "495gm", price: 1795, stock: 50, weight: 495 }
+      { size: "120gm", price: 450, stock: 50, weight: 120, available: false },
+      { size: "295gm", price: 1067, stock: 50, weight: 295, available: true },
+      { size: "495gm", price: 1795, stock: 50, weight: 495, available: true }
     ],
     benefits: ["A2 Ghee", "Bilona Method", "Pure & Natural", "Himalayan"]
   },
@@ -119,8 +119,8 @@ export const PRODUCTS = [
       "https://raw.githubusercontent.com/Orangutanorganics-OUO/image_repo/refs/heads/main/Black_Soybean/bs_2.png"
     ],
     variants: [
-      { size: "500gm", price: 347, stock: 100, weight: 500 },
-      { size: "1kg", price: 691, stock: 100, weight: 1000 }
+      { size: "500gm", price: 347, stock: 100, weight: 500, available: true },
+      { size: "1kg", price: 691, stock: 100, weight: 1000, available: true }
     ],
     benefits: ["High Protein", "Antioxidants", "Organic", "Rare Variety"]
   },
@@ -149,7 +149,7 @@ export const PRODUCTS = [
       "https://raw.githubusercontent.com/Orangutanorganics-OUO/image_repo/refs/heads/main/Red_Rice/rr_3.png"
     ],
     variants: [
-      { size: "1kg", price: 347, stock: 100, weight: 1000 }
+      { size: "1kg", price: 347, stock: 100, weight: 1000, available: true }
     ],
     benefits: ["High Fiber", "Antioxidants", "Organic", "Nutty Flavor"]
   },
@@ -180,7 +180,7 @@ export const PRODUCTS = [
       "https://raw.githubusercontent.com/Orangutanorganics-OUO/image_repo/refs/heads/main/Laadu/ts_4.png"
     ],
     variants: [
-      { size: "23gm", price: 347, stock: 60, weight: 23 }
+      { size: "23gm", price: 347, stock: 60, weight: 23, available: true }
     ],
     benefits: ["Wild Harvested", "Unique Flavor", "Traditional", "Premium Quality"]
   }

@@ -4,6 +4,7 @@ import { PRODUCTS, getProductById } from '../utils/products';
 import { fetchReviewsWithCache, getReviewsByProduct, getAverageRating, getReviewCount } from '../utils/fetchReviews';
 import { getDiscountedPrice, hasDiscount, getDiscount, DISCOUNT_CONFIG } from '../utils/discounts';
 import { isBestseller } from '../utils/bestsellers';
+import { isProductSoldOut } from '../utils/availability';
 import { trackViewContent, trackAddToCart } from '../utils/metaPixel';
 import StarRating from '../components/StarRating';
 import ReviewForm from '../components/ReviewForm';
@@ -86,6 +87,7 @@ function ProductCard({ product, reviews = [] }) {
   const isProductBestseller = isBestseller(product.name);
   const avgRating = getAverageRating(product.name, reviews);
   const reviewCount = getReviewCount(product.name, reviews);
+  const productSoldOut = isProductSoldOut(product.id);
 
   // Use product images array, fallback to single image if images array doesn't exist
   const carouselImages = product.images || [product.image];
@@ -102,6 +104,9 @@ function ProductCard({ product, reviews = [] }) {
           <span className="product-card__discount-tag">
             {DISCOUNT_CONFIG.tagLabel} {discountPercent}%
           </span>
+        )}
+        {productSoldOut && (
+          <span className="product-card__soldout-tag">Sold Out</span>
         )}
       </div>
       <div className="product-card__content">
@@ -204,6 +209,7 @@ function ProductDetail({ productId }) {
   };
 
   const variant = product.variants[selectedVariant];
+  const isCurrentVariantAvailable = variant.available !== false;
 
   // Use product images array, fallback to single image if images array doesn't exist
   const carouselImages = product.images || [product.image];
@@ -240,16 +246,22 @@ function ProductDetail({ productId }) {
             <div className="product-variants">
               <h3>Select Size:</h3>
               <div className="variants-grid">
-                {product.variants.map((v, idx) => (
-                  <button
-                    key={idx}
-                    className={`variant-btn ${selectedVariant === idx ? 'active' : ''}`}
-                    onClick={() => setSelectedVariant(idx)}
-                  >
-                    <span className="variant-size">{v.size}</span>
-                    <span className="variant-price">₹{v.price}</span>
-                  </button>
-                ))}
+                {product.variants.map((v, idx) => {
+                  const variantAvailable = v.available !== false;
+                  return (
+                    <button
+                      key={idx}
+                      className={`variant-btn ${selectedVariant === idx ? 'active' : ''} ${!variantAvailable ? 'soldout' : ''}`}
+                      onClick={() => setSelectedVariant(idx)}
+                      disabled={!variantAvailable}
+                    >
+                      <span className="variant-size">{v.size}</span>
+                      <span className="variant-price">
+                        {variantAvailable ? `₹${v.price}` : 'Sold Out'}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
@@ -282,14 +294,20 @@ function ProductDetail({ productId }) {
               </div>
             </div>
 
-            <button className="btn btn--primary btn--large btn--full" onClick={handleAddToCart}>
-              Add to Cart
+            <button
+              className="btn btn--primary btn--large btn--full"
+              onClick={handleAddToCart}
+              disabled={!isCurrentVariantAvailable}
+            >
+              {isCurrentVariantAvailable ? 'Add to Cart' : 'Sold Out'}
             </button>
 
             <div className="product-meta">
               <div className="meta-item">
                 <span className="meta-label">Stock:</span>
-                <span className="meta-value stock-available">In Stock</span>
+                <span className={`meta-value ${isCurrentVariantAvailable ? 'stock-available' : 'stock-soldout'}`}>
+                  {isCurrentVariantAvailable ? 'In Stock' : 'Sold Out'}
+                </span>
               </div>
               <div className="meta-item">
                 <span className="meta-label">Weight:</span>
