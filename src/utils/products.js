@@ -89,7 +89,7 @@ export const PRODUCTS = [
       "https://raw.githubusercontent.com/Orangutanorganics-OUO/image_repo/refs/heads/main/Ghee/g_4.png",
     ],
     variants: [
-      { size: "120gm", price: 450, stock: 50, weight: 120, available: false },
+      { size: "120gm", price: 450, stock: 50, weight: 120, available: true },
       { size: "295gm", price: 1067, stock: 50, weight: 295, available: true },
       { size: "495gm", price: 1795, stock: 50, weight: 495, available: true }
     ],
