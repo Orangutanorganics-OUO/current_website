@@ -20,6 +20,16 @@ html, body, #root {
   padding: 0;
 }
 
+/* ---- Lenis smooth-scroll shim ----------------------------------------
+   Lenis (initialised in App.js) adds .lenis and .lenis-smooth classes
+   to <html> while active. These rules are the recommended defaults so
+   the browser's native smooth-scroll doesn't fight with Lenis, and so
+   scroll-locked pages (modals etc.) behave predictably. */
+html.lenis, html.lenis body { height: auto; }
+.lenis.lenis-smooth { scroll-behavior: auto !important; }
+.lenis.lenis-smooth [data-lenis-prevent] { overscroll-behavior: contain; }
+.lenis.lenis-stopped { overflow: hidden; }
+
 body {
   margin: 0;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',

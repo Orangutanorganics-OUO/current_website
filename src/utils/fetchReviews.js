@@ -13,11 +13,22 @@ export const fetchReviewsFromSheet = async () => {
     const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${SHEET_NAME}`;
 
     const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`Sheet fetch failed: ${response.status} ${response.statusText}. Is the sheet shared as "Anyone with the link"?`);
+    }
     const text = await response.text();
 
-    // Google Sheets wraps the JSON in a function call, we need to extract it
-    const jsonString = text.substring(47).slice(0, -2); // Remove "/*O_o*/google.visualization.Query.setResponse(" and ");"
-    const data = JSON.parse(jsonString);
+    // Google wraps the JSON payload in a JSONP-ish envelope whose exact
+    // prefix/suffix varies (`/*O_o*/google.visualization.Query.setResponse(...)`,
+    // or `)]}'\n...`, etc). Grab the payload by slicing from the first `{` to
+    // the matching final `}` — resilient to any wrapper Google chooses.
+    const firstBrace = text.indexOf('{');
+    const lastBrace = text.lastIndexOf('}');
+    if (firstBrace === -1 || lastBrace === -1 || lastBrace <= firstBrace) {
+      // Almost certainly an HTML login/error page — sheet is not public.
+      throw new Error('Sheet response is not JSON. Set the sheet to "Anyone with the link — Viewer" in Google Sheets.');
+    }
+    const data = JSON.parse(text.substring(firstBrace, lastBrace + 1));
 
     // Extract rows
     const rows = data.table.rows;

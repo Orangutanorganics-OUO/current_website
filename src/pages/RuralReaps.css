@@ -1,0 +1,41 @@
+.rural-reaps {
+  min-height: 70vh;
+  background: #F8F3EB;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 6vw;
+  box-sizing: border-box;
+}
+
+.rural-reaps__inner {
+  max-width: 720px;
+  text-align: center;
+  color: #024442;
+  font-family: -apple-system, "Segoe UI", system-ui, sans-serif;
+}
+
+.rural-reaps__eyebrow {
+  display: inline-block;
+  font-size: 13px;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: #B5882D;
+  margin-bottom: 18px;
+}
+
+.rural-reaps__title {
+  font-family: Georgia, "Playfair Display", serif;
+  font-size: clamp(34px, 5vw, 56px);
+  font-weight: 700;
+  margin: 0 0 16px;
+  line-height: 1.1;
+}
+
+.rural-reaps__body {
+  font-size: 16px;
+  line-height: 1.7;
+  color: #655F59;
+  margin: 0;
+}

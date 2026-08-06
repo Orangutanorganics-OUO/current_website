@@ -1,4 +1,5 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import "./Recipe.css";
 
 // --- Data --------------------------------------------------------------------
@@ -333,80 +334,66 @@ const ALL_INGREDIENTS = Array.from(
 const ALL_OCCASIONS = Array.from(new Set(RECIPES.map((r) => r.occasion)));
 const ALL_TAGS = Array.from(new Set(RECIPES.flatMap((r) => r.tags || []))).sort();
 
-// --- UI ---------------------------------------------------------------------
+// ===== NEW REDESIGN — WAVE THEME — START =====
+const R = {
+  DEEP_FOREST:'#03605C', DEEP_FOREST_DK:'#024442', FOREST_SHADOW:'#013532',
+  INK:'#655F59', SEAL_TERRACOTTA:'#D76427', CREAM:'#F8F3EB', CREAM_SOFT:'#F1E7CE',
+  PAPER:'#F8F3EB', MEADOW_GOLD:'#B5882D', GOLD_LINE:'#B5882D',
+  SOIL_OLIVE:'#618E69', OCHRE:'#A56650',
+};
 
-function Controls({
-  query,
-  setQuery,
-  occasion,
-  setOccasion,
-  tags,
-  setTags,
-  kcal,
-  setKcal,
-  ingredients,
-  setIngredients,
-  reset,
-}) {
+function WaveDivider({ height = 90, palette, flip = false }) {
+  const layers = palette || [R.CREAM, R.CREAM_SOFT];
+  const style = { transform: flip ? 'scaleY(-1)' : 'none', display: 'block', width: '100%', height };
   return (
-    <section className="controls">
-      <div className="input" title="Search by recipe, ingredient, tag">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-          <path
-            d="M21 21l-4.2-4.2M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z"
-            stroke="currentColor"
-            strokeWidth="1.6"
-            strokeLinecap="round"
-          />
+    <svg viewBox="0 0 1440 100" preserveAspectRatio="none" aria-hidden="true" style={style}>
+      <path d="M0,32 C220,4 460,72 720,36 C980,0 1220,60 1440,28 L1440,100 L0,100 Z"
+            fill={layers[0]} opacity="0.95"/>
+      {layers[1] && (
+        <path d="M0,52 C260,28 480,80 780,52 C1060,26 1260,72 1440,48 L1440,100 L0,100 Z"
+              fill={layers[1]} opacity="0.65"/>
+      )}
+      {layers[2] && (
+        <path d="M0,72 C300,54 520,90 800,72 C1080,54 1260,88 1440,72 L1440,100 L0,100 Z"
+              fill={layers[2]} opacity="0.4"/>
+      )}
+      <path d="M0,34 C220,6 460,74 720,38 C980,2 1220,62 1440,30"
+            stroke={R.GOLD_LINE} strokeWidth="1.1" fill="none" opacity="0.45"/>
+    </svg>
+  );
+}
+
+function Controls({ query, setQuery, occasion, setOccasion, tags, setTags, kcal, setKcal, ingredients, setIngredients, reset }) {
+  return (
+    <div className="wtn-r-controls">
+      <div className="wtn-r-search">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M21 21l-4.2-4.2M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z"
+                stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
         </svg>
-        <input
-          value={query}
-          placeholder="Search recipes..."
-          onChange={(e) => setQuery(e.target.value)}
-        />
+        <input value={query} placeholder="Search recipes, ingredients, or tags…"
+               onChange={(e)=>setQuery(e.target.value)} />
       </div>
-
-      <div className="select">
-        <select value={occasion || ""} onChange={(e) => setOccasion(e.target.value || null)}>
-          <option value="">All occasions</option>
-          {ALL_OCCASIONS.map((o) => (
-            <option key={o} value={o}>
-              {o}
-            </option>
-          ))}
-        </select>
+      <select className="wtn-r-select" value={occasion || ""} onChange={(e) => setOccasion(e.target.value || null)}>
+        <option value="">All occasions</option>
+        {ALL_OCCASIONS.map(o => <option key={o} value={o}>{o}</option>)}
+      </select>
+      <div className="wtn-r-range">
+        <label>Max Calories: <strong>{kcal} kcal</strong></label>
+        <input type="range" min={200} max={700} step={10} value={kcal}
+               onChange={(e) => setKcal(Number(e.target.value))} />
       </div>
+      <button type="button" className="wtn-btn wtn-btn--ghost" onClick={reset}>Reset</button>
 
-      <div className="range">
-        <label>Max Calories: {kcal} kcal</label>
-        <input
-          type="range"
-          min={200}
-          max={700}
-          step={10}
-          value={kcal}
-          onChange={(e) => setKcal(Number(e.target.value))}
-        />
-      </div>
-
-      <button className="btn" onClick={reset} title="Clear all filters" style={{ color: "black" }}>
-        Reset
-      </button>
-
-      <div className="chipset" style={{ gridColumn: "1 / -1" }}>
-        <div className="chips">
-          {ALL_INGREDIENTS.map((ing) => {
+      <div className="wtn-r-chipwrap">
+        <span className="wtn-r-chipwrap__label">Ingredients</span>
+        <div className="wtn-r-chips">
+          {ALL_INGREDIENTS.map(ing => {
             const active = ingredients.includes(ing);
             return (
-              <button
-                key={ing}
-                className={"chip " + (active ? "chip--active" : "")}
-                onClick={() => {
-                  setIngredients(
-                    active ? ingredients.filter((x) => x !== ing) : [...ingredients, ing]
-                  );
-                }}
-              >
+              <button key={ing} type="button"
+                className={`wtn-r-chip ${active?'is-active':''}`}
+                onClick={()=>{ setIngredients(active? ingredients.filter(x=>x!==ing) : [...ingredients, ing]); }}>
                 {ing}
               </button>
             );
@@ -414,57 +401,54 @@ function Controls({
         </div>
       </div>
 
-      <div className="chipset" style={{ gridColumn: "1 / -1" }}>
-        <div className="chips">
-          {ALL_TAGS.map((tag) => {
+      <div className="wtn-r-chipwrap">
+        <span className="wtn-r-chipwrap__label">Tags</span>
+        <div className="wtn-r-chips">
+          {ALL_TAGS.map(tag => {
             const active = tags.includes(tag);
             return (
-              <button
-                key={tag}
-                className={"chip " + (active ? "chip--active" : "")}
-                onClick={() => {
-                  setTags(active ? tags.filter((t) => t !== tag) : [...tags, tag]);
-                }}
-              >
+              <button key={tag} type="button"
+                className={`wtn-r-chip ${active?'is-active':''}`}
+                onClick={()=>{ setTags(active? tags.filter(t=>t!==tag) : [...tags, tag]); }}>
                 {tag}
               </button>
             );
           })}
         </div>
       </div>
-    </section>
+    </div>
   );
 }
 
 function RecipeCard({ recipe }) {
   return (
-    <article className="card" role="region" aria-label={recipe.title}>
-      <div className="card__band" aria-hidden></div>
-      <h3 className="card__title">
-        {recipe.emoji ? recipe.emoji + " " : ""}
-        {recipe.title}
-      </h3>
-      <div className="card__meta">
-        <span>{recipe.occasion}</span>
-        <span>•</span>
-        <span>{recipe.calories} kcal</span>
-        <span>•</span>
-        <span>{recipe.time} min</span>
-      </div>
-      <div className="card__body">
-        <div className="pillrow">
-          {recipe.ingredients?.map((i) => (
-            <span key={i} className="pill">{i}</span>
-          ))}
+    <article className="wtn-r-card">
+      <div className="wtn-r-card__head">
+        <span className="wtn-r-card__emoji" aria-hidden>{recipe.emoji}</span>
+        <div>
+          <span className="wtn-r-card__occ">{recipe.occasion}</span>
+          <h3 className="wtn-r-card__title">{recipe.title}</h3>
         </div>
-
-        <p className="muted">Tip: {recipe.quickTip}</p>
-        <ol className="steps">
-          {recipe.steps.map((s, idx) => (
-            <li key={idx}>{s}</li>
-          ))}
-        </ol>
       </div>
+      <div className="wtn-r-card__meta">
+        <span><strong>{recipe.calories}</strong> kcal</span>
+        <span aria-hidden>·</span>
+        <span><strong>{recipe.time}</strong> min</span>
+      </div>
+      <div className="wtn-r-card__ings">
+        {recipe.ingredients?.map(i => <span key={i} className="wtn-r-ing">{i}</span>)}
+      </div>
+      {recipe.quickTip && (
+        <p className="wtn-r-card__tip"><strong>Tip:</strong> {recipe.quickTip}</p>
+      )}
+      <ol className="wtn-r-card__steps">
+        {recipe.steps.map((s, i) => <li key={i}>{s}</li>)}
+      </ol>
+      {recipe.tags && (
+        <div className="wtn-r-card__tags">
+          {recipe.tags.map(t => <span key={t} className="wtn-r-tag">{t}</span>)}
+        </div>
+      )}
     </article>
   );
 }
@@ -476,83 +460,341 @@ export default function Recipes() {
   const [kcal, setKcal] = useState(600);
   const [ingredients, setIngredients] = useState([]);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const targets = document.querySelectorAll('.wtn-rp .wtn-reveal, .wtn-rp .wtn-reveal-group');
+    if (reduced || !('IntersectionObserver' in window)) {
+      targets.forEach((el) => el.classList.add('is-inview'));
+      return;
+    }
+    const io = new IntersectionObserver(
+      (entries) => entries.forEach((e) => {
+        if (e.isIntersecting) { e.target.classList.add('is-inview'); io.unobserve(e.target); }
+      }),
+      // threshold: 0 (not 0.12) — a tall .wtn-reveal-group on mobile
+      // (20 recipe cards in 1 column can be ~8000px tall) caps its own
+      // intersectionRatio well below 0.12, so a threshold of 0.12 would
+      // never fire and the cards would stay invisible. Trigger as soon
+      // as any part enters the rootMargin-trimmed viewport instead.
+      { rootMargin: '0px 0px -10% 0px', threshold: 0 }
+    );
+    targets.forEach((el) => io.observe(el));
+    return () => io.disconnect();
+  }, [query, occasion, kcal, ingredients, tags]);
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return RECIPES.filter((r) => {
+    return RECIPES.filter(r => {
       if (q) {
-        const hay = (
-          r.title +
-          " " +
-          r.ingredients.join(" ") +
-          " " +
-          (r.tags || []).join(" ")
-        ).toLowerCase();
+        const hay = (r.title + " " + r.ingredients.join(" ") + " " + (r.tags || []).join(" ")).toLowerCase();
         if (!hay.includes(q)) return false;
       }
       if (occasion && r.occasion !== occasion) return false;
       if (kcal && r.calories > kcal) return false;
       if (ingredients.length) {
-        const set = new Set(r.ingredients.map((x) => x.toLowerCase()));
-        const ok = ingredients.some((ing) => set.has(ing.toLowerCase()));
-        if (!ok) return false;
+        const set = new Set(r.ingredients.map(x => x.toLowerCase()));
+        if (!ingredients.some(ing => set.has(ing.toLowerCase()))) return false;
       }
       if (tags.length) {
-        const t = (r.tags || []).map((x) => x.toLowerCase());
-        const ok = tags.some((x) => t.includes(x.toLowerCase()));
-        if (!ok) return false;
+        const t = (r.tags || []).map(x => x.toLowerCase());
+        if (!tags.some(x => t.includes(x.toLowerCase()))) return false;
       }
       return true;
     });
   }, [query, occasion, kcal, ingredients, tags]);
 
   const reset = () => {
-    setQuery("");
-    setOccasion(null);
-    setTags([]);
-    setKcal(600);
-    setIngredients([]);
+    setQuery(""); setOccasion(null); setTags([]); setKcal(600); setIngredients([]);
   };
 
   return (
-    <>
-      <Controls
-        query={query}
-        setQuery={setQuery}
-        occasion={occasion}
-        setOccasion={setOccasion}
-        tags={tags}
-        setTags={setTags}
-        kcal={kcal}
-        setKcal={setKcal}
-        ingredients={ingredients}
-        setIngredients={setIngredients}
-        reset={reset}
-      />
+    <div className="wtn-rp">
+      <style>{R_STYLES}</style>
 
-      <main className="container">
-        {filtered.length ? (
-          <section className="grid">
-            {filtered.map((r) => (
-              <RecipeCard key={r.id} recipe={r} />
-            ))}
-          </section>
-        ) : (
-          <div className="empty">
-            <p>
-              No recipes match. Adjust filters or
-              {" "}
-              <button className="btn btn--primary" onClick={reset}>
-                reset
-              </button>
-              .
-            </p>
-            <p>
-              Tip: try searching <strong>Rajma</strong>, <strong>Red Rice</strong>, or use the
-              calorie slider.
-            </p>
+      {/* HERO */}
+      <section className="wtn-r-hero">
+        <div className="wtn-section__inner" style={{ textAlign: 'center' }}>
+          <span className="wtn-eyebrow wtn-reveal">From the Valley Kitchen</span>
+          <h1 className="wtn-h2 wtn-h1 wtn-reveal">20 Signature Himalayan Recipes</h1>
+          <svg className="wtn-h2-rule wtn-reveal" viewBox="0 0 84 6" preserveAspectRatio="none"
+               aria-hidden="true" style={{ margin: '10px auto 18px' }}>
+            <path d="M0,3 C18,0 38,6 56,3 C72,0 80,4 84,3"
+                  stroke={R.MEADOW_GOLD} strokeWidth="1.8" fill="none" strokeLinecap="round"/>
+          </svg>
+          <p className="wtn-sub wtn-reveal" style={{ margin: '0 auto' }}>
+            Comfort classics, festive plates, quick snacks, and clever fusions —
+            all built around OUO rajma, red rice, ghee, spice, and black soybean.
+          </p>
+        </div>
+      </section>
+
+      <WaveDivider height={70} palette={[R.CREAM_SOFT]} />
+
+      {/* CONTROLS + GRID */}
+      <section className="wtn-section wtn-r-list">
+        <div className="wtn-section__inner">
+          <div className="wtn-reveal">
+            <Controls
+              query={query} setQuery={setQuery}
+              occasion={occasion} setOccasion={setOccasion}
+              tags={tags} setTags={setTags}
+              kcal={kcal} setKcal={setKcal}
+              ingredients={ingredients} setIngredients={setIngredients}
+              reset={reset}
+            />
           </div>
-        )}
-      </main>
-    </>
+
+          {filtered.length ? (
+            <div className="wtn-r-grid wtn-reveal-group">
+              {filtered.map(r => <RecipeCard key={r.id} recipe={r} />)}
+            </div>
+          ) : (
+            <div className="wtn-r-empty wtn-reveal">
+              <p>No recipes match your filters.</p>
+              <p>Tip: try <strong>Rajma</strong>, <strong>Red Rice</strong>, or bump up max calories.</p>
+              <button type="button" className="wtn-btn wtn-btn--primary" onClick={reset}>Reset</button>
+            </div>
+          )}
+        </div>
+      </section>
+
+      <WaveDivider height={80} palette={[R.DEEP_FOREST, R.DEEP_FOREST_DK, R.FOREST_SHADOW]} />
+
+      {/* CTA */}
+      <section className="wtn-r-cta">
+        <div className="wtn-cta__inner wtn-reveal">
+          <span className="wtn-cta__eyebrow">Cook Along</span>
+          <h2>Everything you need to make these — from the valley.</h2>
+          <p>Real ghee, real rajma, real red rice. Shipped straight from Himalayan farms.</p>
+          <Link to="/products" className="wtn-btn wtn-btn--primary wtn-btn--large">Shop the Ingredients</Link>
+        </div>
+      </section>
+    </div>
   );
 }
+
+const R_STYLES = `
+  .wtn-rp, .wtn-rp * { box-sizing: border-box; }
+  .wtn-rp {
+    background: ${R.CREAM}; color: ${R.INK};
+    font-family: -apple-system, "Segoe UI", system-ui, sans-serif;
+    overflow-x: hidden;
+  }
+  .wtn-rp .wtn-reveal, .wtn-rp .wtn-reveal-group > * {
+    opacity: 0; transform: translateY(18px);
+    transition: opacity 520ms ease, transform 520ms ease;
+  }
+  .wtn-rp .wtn-reveal.is-inview,
+  .wtn-rp .wtn-reveal-group.is-inview > * { opacity: 1; transform: none; }
+  .wtn-rp .wtn-reveal-group > *:nth-child(2) { transition-delay: 40ms; }
+  .wtn-rp .wtn-reveal-group > *:nth-child(3) { transition-delay: 80ms; }
+  .wtn-rp .wtn-reveal-group > *:nth-child(4) { transition-delay: 120ms; }
+  .wtn-rp .wtn-reveal-group > *:nth-child(5) { transition-delay: 160ms; }
+  .wtn-rp .wtn-reveal-group > *:nth-child(6) { transition-delay: 200ms; }
+
+  .wtn-section { position: relative; padding: 64px 28px 80px; }
+  .wtn-section__inner { max-width: 1320px; margin: 0 auto; }
+  .wtn-eyebrow {
+    display: inline-block;
+    background: ${R.DEEP_FOREST}; color: ${R.CREAM};
+    font-size: 10.5px; letter-spacing: 0.28em; text-transform: uppercase;
+    font-weight: 700; padding: 6px 12px;
+  }
+  .wtn-h2 {
+    font-family: Georgia, "Iowan Old Style", serif;
+    font-size: clamp(28px, 3.4vw, 42px);
+    color: ${R.DEEP_FOREST_DK};
+    margin: 14px 0 10px; line-height: 1.15;
+  }
+  .wtn-h1 { font-size: clamp(34px, 4vw, 54px); }
+  .wtn-h2-rule { display: block; width: 84px; height: 6px; }
+  .wtn-sub { max-width: 640px; color: ${R.INK}; opacity: 0.78; font-size: 15.5px; line-height: 1.6; margin: 0 0 24px; }
+
+  .wtn-btn {
+    display: inline-block; padding: 12px 26px;
+    font-size: 12px; letter-spacing: 0.24em; text-transform: uppercase;
+    font-weight: 700; text-decoration: none;
+    border: 1.5px solid transparent; cursor: pointer;
+    transition: transform 180ms ease, background 180ms ease, color 180ms ease, border-color 180ms ease;
+  }
+  .wtn-btn--primary { background: ${R.MEADOW_GOLD}; color: ${R.FOREST_SHADOW}; border-color: ${R.MEADOW_GOLD}; }
+  .wtn-btn--primary:hover { background: ${R.SEAL_TERRACOTTA}; color: ${R.CREAM}; border-color: ${R.SEAL_TERRACOTTA}; transform: translateY(-1px); }
+  .wtn-btn--ghost { background: ${R.CREAM}; color: ${R.DEEP_FOREST}; border-color: ${R.DEEP_FOREST}; }
+  .wtn-btn--ghost:hover { background: ${R.DEEP_FOREST}; color: ${R.CREAM}; }
+  .wtn-btn--large { padding: 16px 32px; font-size: 13px; }
+
+  .wtn-r-hero { background: ${R.CREAM}; padding: 80px 28px 40px; text-align: center; }
+
+  /* Controls */
+  .wtn-r-controls {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1.4fr auto;
+    gap: 10px 12px; align-items: center;
+    margin-bottom: 28px;
+  }
+  .wtn-r-search {
+    display: flex; align-items: center; gap: 10px;
+    background: ${R.CREAM_SOFT};
+    border: 1.5px solid rgba(3,96,92,0.22);
+    padding: 0 14px; color: ${R.DEEP_FOREST};
+  }
+  .wtn-r-search:focus-within { border-color: ${R.MEADOW_GOLD}; }
+  .wtn-r-search input {
+    flex: 1; background: transparent; border: 0; outline: none;
+    padding: 12px 0; font-family: inherit; font-size: 14px; color: ${R.INK};
+  }
+  .wtn-r-search input::placeholder { color: ${R.INK}; opacity: 0.55; }
+  .wtn-r-select {
+    background: ${R.CREAM_SOFT};
+    border: 1.5px solid rgba(3,96,92,0.22);
+    padding: 10px 12px;
+    font-family: inherit; font-size: 13.5px;
+    color: ${R.DEEP_FOREST_DK}; cursor: pointer;
+  }
+  .wtn-r-select:focus { border-color: ${R.MEADOW_GOLD}; outline: none; }
+  .wtn-r-range {
+    display: flex; flex-direction: column; gap: 4px;
+    background: ${R.CREAM_SOFT};
+    border: 1.5px solid rgba(3,96,92,0.22);
+    padding: 8px 14px;
+  }
+  .wtn-r-range label {
+    font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase;
+    font-weight: 700; color: ${R.SOIL_OLIVE};
+  }
+  .wtn-r-range strong { color: ${R.DEEP_FOREST_DK}; font-weight: 800; }
+  .wtn-r-range input[type=range] { width: 100%; accent-color: ${R.MEADOW_GOLD}; }
+
+  .wtn-r-chipwrap { grid-column: 1 / -1; }
+  .wtn-r-chipwrap__label {
+    display: block;
+    font-size: 10.5px; letter-spacing: 0.22em; text-transform: uppercase;
+    font-weight: 700; color: ${R.SOIL_OLIVE}; margin: 8px 0 6px;
+  }
+  .wtn-r-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .wtn-r-chip {
+    background: ${R.CREAM}; color: ${R.DEEP_FOREST_DK};
+    border: 1.5px solid rgba(3,96,92,0.20);
+    padding: 5px 11px;
+    font-size: 10.5px; letter-spacing: 0.16em; text-transform: uppercase;
+    font-weight: 700; cursor: pointer;
+    transition: all 160ms ease;
+  }
+  .wtn-r-chip:hover { border-color: ${R.MEADOW_GOLD}; }
+  .wtn-r-chip.is-active { background: ${R.DEEP_FOREST}; color: ${R.CREAM}; border-color: ${R.DEEP_FOREST}; }
+
+  /* Grid & Cards */
+  .wtn-r-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 24px;
+  }
+  .wtn-r-card {
+    background: ${R.CREAM_SOFT};
+    border: 1px solid rgba(30,90,85,0.10);
+    padding: 22px 22px 20px;
+    display: flex; flex-direction: column;
+    transition: transform 220ms ease, border-color 220ms ease, box-shadow 220ms ease;
+  }
+  .wtn-r-card:hover {
+    transform: translateY(-4px);
+    border-color: ${R.MEADOW_GOLD};
+    box-shadow: 0 10px 24px rgba(15,58,54,0.10);
+  }
+  .wtn-r-card__head { display: flex; gap: 12px; align-items: flex-start; margin-bottom: 8px; }
+  .wtn-r-card__emoji {
+    font-size: 32px; line-height: 1;
+    flex: 0 0 auto;
+    padding-top: 4px;
+  }
+  .wtn-r-card__occ {
+    display: inline-block;
+    background: ${R.MEADOW_GOLD}; color: ${R.FOREST_SHADOW};
+    font-size: 10px; letter-spacing: 0.24em; text-transform: uppercase;
+    font-weight: 800; padding: 3px 8px; margin-bottom: 6px;
+  }
+  .wtn-r-card__title {
+    font-family: Georgia, serif; font-size: 18px;
+    color: ${R.DEEP_FOREST_DK}; margin: 0; line-height: 1.25;
+  }
+  .wtn-r-card__meta {
+    display: flex; gap: 8px;
+    font-size: 12px; color: ${R.INK}; opacity: 0.85;
+    margin: 0 0 12px;
+  }
+  .wtn-r-card__meta strong { color: ${R.DEEP_FOREST_DK}; font-weight: 700; }
+  .wtn-r-card__ings { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+  .wtn-r-ing {
+    font-size: 10.5px; letter-spacing: 0.14em; text-transform: uppercase;
+    font-weight: 600; color: ${R.SOIL_OLIVE};
+    background: rgba(168,185,117,0.18);
+    padding: 4px 8px; border: 1px solid rgba(111,131,64,0.28);
+  }
+  .wtn-r-card__tip {
+    background: rgba(181,136,45,0.10);
+    border-left: 3px solid ${R.MEADOW_GOLD};
+    padding: 10px 12px; margin: 0 0 12px;
+    font-size: 13px; color: ${R.INK}; line-height: 1.55;
+  }
+  .wtn-r-card__tip strong { color: ${R.DEEP_FOREST_DK}; font-weight: 700; }
+  .wtn-r-card__steps {
+    margin: 0 0 12px; padding-left: 20px;
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .wtn-r-card__steps li {
+    font-size: 13.5px; color: ${R.INK}; line-height: 1.55;
+  }
+  .wtn-r-card__tags {
+    display: flex; flex-wrap: wrap; gap: 6px;
+    padding-top: 10px; margin-top: auto;
+    border-top: 1px dashed rgba(30,90,85,0.18);
+  }
+  .wtn-r-tag {
+    font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase;
+    font-weight: 600; color: ${R.DEEP_FOREST_DK};
+    background: ${R.CREAM};
+    padding: 3px 8px; border: 1px solid rgba(3,96,92,0.18);
+  }
+
+  .wtn-r-empty {
+    text-align: center; padding: 40px 20px;
+    background: ${R.CREAM_SOFT};
+    border: 1px dashed rgba(30,90,85,0.20);
+  }
+  .wtn-r-empty p { color: ${R.INK}; margin: 0 0 12px; }
+
+  /* CTA */
+  .wtn-r-cta {
+    background: ${R.FOREST_SHADOW}; color: ${R.CREAM};
+    padding: 80px 28px; text-align: center;
+  }
+  .wtn-cta__inner { max-width: 780px; margin: 0 auto; }
+  .wtn-cta__eyebrow {
+    display: inline-block;
+    background: ${R.MEADOW_GOLD}; color: ${R.FOREST_SHADOW};
+    font-size: 10.5px; letter-spacing: 0.28em; text-transform: uppercase;
+    font-weight: 800; padding: 6px 12px; margin-bottom: 18px;
+  }
+  .wtn-r-cta h2 {
+    font-family: Georgia, serif; font-size: clamp(28px, 3.6vw, 44px);
+    color: ${R.CREAM}; margin: 0 0 12px; line-height: 1.15;
+  }
+  .wtn-r-cta p { color: ${R.CREAM}; opacity: 0.82; font-size: 15.5px; line-height: 1.6; margin: 0 0 26px; }
+
+  @media (max-width: 900px) {
+    .wtn-section { padding: 48px 20px 60px; }
+    .wtn-r-hero { padding: 60px 20px 28px; }
+    .wtn-r-cta { padding: 60px 20px; }
+    .wtn-r-controls { grid-template-columns: 1fr 1fr; }
+    .wtn-r-search { grid-column: 1 / -1; }
+    .wtn-r-range { grid-column: 1 / -1; }
+  }
+  @media (max-width: 560px) {
+    .wtn-r-controls { grid-template-columns: 1fr; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .wtn-rp .wtn-reveal, .wtn-rp .wtn-reveal-group > * { transition: none; }
+  }
+`;
+// ===== NEW REDESIGN — WAVE THEME — END =====

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import Lenis from 'lenis';
 import Navigation from './components/Navigation';
 import ScrollToTop from './components/ScrollToTop';
 import WhatsAppButton from './components/WhatsAppButton';
@@ -18,6 +19,7 @@ import Recipes from './pages/Recipes';
 import Nutrition from './pages/Nutrition';
 import Matters from './pages/Matters';
 import Faq from './pages/Faq';
+import RuralReaps from './pages/RuralReaps';
 import './App.css';
 
 function App() {
@@ -34,6 +36,48 @@ function App() {
     };
   }, []);
 
+  // ---- Smooth scroll (Lenis) ------------------------------------------
+  // Intercepts wheel/keyboard/touch scroll and interpolates it — fast
+  // flings no longer teleport to the end of the page. Native scroll
+  // semantics are preserved, so position:fixed, IntersectionObserver,
+  // and per-frame getBoundingClientRect() (used by HorizontalProducts and
+  // the WhyItMatters transition) all continue to work correctly.
+  //
+  // Enabled on both desktop and touch devices. Only skipped when the user
+  // has prefers-reduced-motion set (accessibility).
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const prefersReduced =
+      window.matchMedia &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (prefersReduced) return;
+
+    const lenis = new Lenis({
+      // Duration is how long the eased catch-up takes. Default 1.2s feels
+      // premium without being sluggish. Tune here if it needs more/less.
+      duration: 1.2,
+      easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)), // expo-out
+      smoothWheel: true,
+      // Touch smoothing on. Multiplier tuned down slightly so a swipe
+      // doesn't over-shoot compared to native inertial scroll.
+      smoothTouch: true,
+      touchMultiplier: 1.5,
+    });
+
+    let rafId = 0;
+    function raf(time) {
+      lenis.raf(time);
+      rafId = requestAnimationFrame(raf);
+    }
+    rafId = requestAnimationFrame(raf);
+
+    return () => {
+      cancelAnimationFrame(rafId);
+      lenis.destroy();
+    };
+  }, []);
+
   const updateCartCount = () => {
     const cart = JSON.parse(localStorage.getItem('cart') || '[]');
     const count = cart.reduce((sum, item) => sum + item.quantity, 0);
@@ -46,7 +90,6 @@ function App() {
       <div className="App">
         <Navigation cartCount={cartCount} />
         <WhatsAppButton />
-        {/* <PurchasePopup /> */}
         <main className="main-content">
           <Routes>
             <Route path="/" element={<Home />} />
@@ -62,6 +105,8 @@ function App() {
             <Route path="/who-are-we/farmer-impact" element={<FarmerImpact />} />
             <Route path="/who-are-we/recipes" element={<Recipes />} />
             <Route path="/who-are-we/faq" element={<Faq />} />
+            <Route path="/traceability" element={<Traceability />} />
+            <Route path="/rural-reaps" element={<RuralReaps />} />
             <Route path="/nutrition" element={<Nutrition />} />
             <Route path="/why-it-matters" element={<Matters />} />
           </Routes>
