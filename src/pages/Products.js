@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { PRODUCTS, getProductById } from '../utils/products';
+import { PRODUCTS, getProductById, hydrateVariant } from '../utils/products';
+import { subscribeConfig } from '../utils/configClient';
 import { fetchReviewsWithCache, getReviewsByProduct, getAverageRating, getReviewCount } from '../utils/fetchReviews';
 import { getDiscountedPrice, hasDiscount, getDiscount, DISCOUNT_CONFIG } from '../utils/discounts';
 import { isBestseller } from '../utils/bestsellers';
@@ -26,10 +27,15 @@ function Products() {
 function ProductList() {
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [reviews, setReviews] = useState([]);
+  const [, setConfigTick] = useState(0);
   const categories = ['All', ...new Set(PRODUCTS.map(p => p.category))];
 
   useEffect(() => {
     fetchReviewsWithCache().then(setReviews).catch(console.error);
+  }, []);
+
+  useEffect(() => {
+    return subscribeConfig(() => setConfigTick((t) => t + 1));
   }, []);
 
   const filteredProducts = selectedCategory === 'All'
@@ -67,8 +73,9 @@ function ProductList() {
 }
 
 function ProductCard({ product, reviews = [] }) {
-  const minPrice = Math.min(...product.variants.map(v => v.price));
-  const maxPrice = Math.max(...product.variants.map(v => v.price));
+  const hydratedVariants = product.variants.map((v) => hydrateVariant(product, v));
+  const minPrice = Math.min(...hydratedVariants.map(v => v.price));
+  const maxPrice = Math.max(...hydratedVariants.map(v => v.price));
 
   const hasProductDiscount = hasDiscount(product.name);
   const discountPercent = getDiscount(product.name);
@@ -202,10 +209,15 @@ function CardWaveCut({ fill = P.CREAM_SOFT }) {
 function ProductList() {
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [reviews, setReviews] = useState([]);
+  const [, setConfigTick] = useState(0);
   const categories = ['All', ...new Set(PRODUCTS.map(p => p.category))];
 
   useEffect(() => {
     fetchReviewsWithCache().then(setReviews).catch(console.error);
+  }, []);
+
+  useEffect(() => {
+    return subscribeConfig(() => setConfigTick((t) => t + 1));
   }, []);
 
   // Scroll-reveal — identical pattern to Home.js / WhoAreWe.js.
@@ -313,8 +325,9 @@ function ProductList() {
 }
 
 function ProductCard({ product, reviews = [] }) {
-  const minPrice = Math.min(...product.variants.map(v => v.price));
-  const maxPrice = Math.max(...product.variants.map(v => v.price));
+  const hydratedVariants = product.variants.map((v) => hydrateVariant(product, v));
+  const minPrice = Math.min(...hydratedVariants.map(v => v.price));
+  const maxPrice = Math.max(...hydratedVariants.map(v => v.price));
 
   const hasProductDiscount = hasDiscount(product.name);
   const discountPercent = getDiscount(product.name);
@@ -1021,13 +1034,18 @@ function ProductDetail({ productId }) {
   const [toast, setToast] = useState(null);
   const [reviews, setReviews] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
+  const [, setConfigTick] = useState(0);
   const REVIEWS_PER_PAGE = 3;
+
+  useEffect(() => {
+    return subscribeConfig(() => setConfigTick((t) => t + 1));
+  }, []);
 
   useEffect(() => {
     fetchReviewsWithCache().then(setReviews).catch(console.error);
 
     if (product) {
-      const currentVariant = product.variants[selectedVariant];
+      const currentVariant = hydrateVariant(product, product.variants[selectedVariant]);
       trackViewContent(product, currentVariant.price);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1046,13 +1064,17 @@ function ProductDetail({ productId }) {
   }
 
   const handleAddToCart = () => {
+    const hv = hydrateVariant(product, product.variants[selectedVariant]);
     const cartItem = {
-      product_retailer_id: `${product.id}_${product.variants[selectedVariant].size}`,
+      // Real backend SKU when known; local composite key otherwise. Checkout
+      // reads this into the `sku` field on the create-order payload so backend
+      // server-pricing hits the O(1) SKU index instead of the name+size fallback.
+      product_retailer_id: hv.sku || `${product.id}_${hv.size}`,
       productId: product.id,
       name: product.name,
-      size: product.variants[selectedVariant].size,
-      price: product.variants[selectedVariant].price,
-      weight: product.variants[selectedVariant].weight,
+      size: hv.size,
+      price: hv.price,
+      weight: hv.weight,
       quantity: quantity,
       image: product.image,
     };
@@ -1081,7 +1103,8 @@ function ProductDetail({ productId }) {
     });
   };
 
-  const variant = product.variants[selectedVariant];
+  const hydratedVariants = product.variants.map((v) => hydrateVariant(product, v));
+  const variant = hydratedVariants[selectedVariant];
   const isCurrentVariantAvailable = variant.available !== false;
   const carouselImages = product.images || [product.image];
 
@@ -1128,7 +1151,7 @@ function ProductDetail({ productId }) {
               <div className="pdt-block">
                 <h3>Select Size</h3>
                 <div className="pdt-variants">
-                  {product.variants.map((v, idx) => {
+                  {hydratedVariants.map((v, idx) => {
                     const variantAvailable = v.available !== false;
                     return (
                       <button

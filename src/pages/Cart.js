@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { getPricingConstants, getProductBySku, subscribeConfig } from '../utils/configClient';
+import { PRODUCTS, hydrateVariant } from '../utils/products';
 import './Cart.css';
 
 const W = {
@@ -16,9 +18,6 @@ const W = {
   SUCCESS:         '#3F7A3B',
   BURGUNDY:        '#95373A',
 };
-
-const BULK_THRESHOLD_G = 3000;
-const BULK_DISCOUNT_PCT = 0.20;
 
 const scopedStyles = `
   .crt, .crt * { box-sizing: border-box; }
@@ -334,15 +333,70 @@ const scopedStyles = `
 
 function Cart() {
   const [cart, setCart] = useState([]);
+  const [, setConfigTick] = useState(0);
   const navigate = useNavigate();
 
   useEffect(() => {
     loadCart();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Re-load cart when /api/config lands so stale prices in localStorage are
+  // refreshed against the backend-authoritative catalog.
+  useEffect(() => {
+    return subscribeConfig(() => {
+      setConfigTick((t) => t + 1);
+      loadCart();
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  /**
+   * Overlay the latest backend catalog price + weight onto each stored cart
+   * item. This keeps a cart that was added months ago consistent with the
+   * current server-authoritative pricing — otherwise the total the user sees
+   * at checkout would fail server-pricing revalidation.
+   *
+   * Falls back to the stored values when the catalog doesn't have an entry
+   * yet (Spice 23gm, first paint before /api/config lands, etc.).
+   */
+  const rehydrateCartItem = (item) => {
+    let latest = null;
+    if (item.product_retailer_id) latest = getProductBySku(item.product_retailer_id);
+    if (!latest && item.productId != null) {
+      const product = PRODUCTS.find((p) => p.id === item.productId);
+      const variant = product?.variants.find((v) => v.size === item.size);
+      if (product && variant) {
+        const hv = hydrateVariant(product, variant);
+        return {
+          ...item,
+          price: hv.price,
+          weight: hv.weight,
+          product_retailer_id: hv.sku || item.product_retailer_id,
+        };
+      }
+    }
+    if (latest) {
+      return {
+        ...item,
+        weight: Number.isFinite(latest.weight_g) && latest.weight_g > 0 ? latest.weight_g : item.weight,
+        price: latest.verified && Number.isFinite(latest.price_paise) && latest.price_paise > 0
+          ? Math.round(latest.price_paise / 100)
+          : item.price,
+      };
+    }
+    return item;
+  };
+
   const loadCart = () => {
-    const cartData = JSON.parse(localStorage.getItem('cart') || '[]');
-    setCart(cartData);
+    const raw = JSON.parse(localStorage.getItem('cart') || '[]');
+    const hydrated = raw.map(rehydrateCartItem);
+    // Persist any price/weight refresh so subsequent reads are consistent.
+    if (hydrated.length && JSON.stringify(hydrated) !== JSON.stringify(raw)) {
+      localStorage.setItem('cart', JSON.stringify(hydrated));
+      window.dispatchEvent(new Event('cartUpdated'));
+    }
+    setCart(hydrated);
   };
 
   const updateQuantity = (index, newQuantity) => {
@@ -368,9 +422,10 @@ function Cart() {
     cart.reduce((sum, item) => sum + item.weight * item.quantity, 0);
 
   const calculateDiscount = () => {
+    const { bulk_discount_threshold_g, bulk_discount_rate } = getPricingConstants();
     const totalWeight = calculateTotalWeight();
-    if (totalWeight >= BULK_THRESHOLD_G) {
-      return Math.round(calculateSubtotal() * BULK_DISCOUNT_PCT);
+    if (totalWeight >= bulk_discount_threshold_g) {
+      return Math.round(calculateSubtotal() * bulk_discount_rate);
     }
     return 0;
   };
@@ -405,13 +460,15 @@ function Cart() {
     );
   }
 
+  const { bulk_discount_threshold_g: bulkThreshold, bulk_discount_rate: bulkRate } = getPricingConstants();
   const subtotal = calculateSubtotal();
   const discount = calculateDiscount();
   const finalSubtotal = subtotal - discount;
   const totalWeight = calculateTotalWeight();
-  const remainingToBulk = Math.max(0, BULK_THRESHOLD_G - totalWeight);
-  const bulkProgress = Math.min(100, Math.round((totalWeight / BULK_THRESHOLD_G) * 100));
-  const bulkUnlocked = totalWeight >= BULK_THRESHOLD_G;
+  const remainingToBulk = Math.max(0, bulkThreshold - totalWeight);
+  const bulkProgress = Math.min(100, Math.round((totalWeight / bulkThreshold) * 100));
+  const bulkUnlocked = totalWeight >= bulkThreshold;
+  const bulkDiscountLabel = `${Math.round(bulkRate * 100)}%`;
 
   return (
     <div className="crt">
@@ -500,10 +557,10 @@ function Cart() {
                 <div className="crt-bulk__label">
                   <span>
                     {bulkUnlocked
-                      ? '20% Bulk Discount unlocked'
-                      : `Add ${remainingToBulk}g more for 20% off`}
+                      ? `${bulkDiscountLabel} Bulk Discount unlocked`
+                      : `Add ${remainingToBulk}g more for ${bulkDiscountLabel} off`}
                   </span>
-                  <span>{totalWeight}g / {BULK_THRESHOLD_G}g</span>
+                  <span>{totalWeight}g / {bulkThreshold}g</span>
                 </div>
                 <div className="crt-bulk__bar">
                   <div className="crt-bulk__fill" style={{ width: `${bulkProgress}%` }} />
@@ -517,7 +574,7 @@ function Cart() {
 
               {discount > 0 && (
                 <div className="crt-row crt-row--discount">
-                  <span>Bulk Discount (20% OFF)</span>
+                  <span>Bulk Discount ({bulkDiscountLabel} OFF)</span>
                   <span>−₹{discount}</span>
                 </div>
               )}

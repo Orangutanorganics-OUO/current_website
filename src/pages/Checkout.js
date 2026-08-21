@@ -1,14 +1,32 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
 import { trackInitiateCheckout, trackPurchase } from '../utils/metaPixel';
-import { validateCoupon, calculateCouponDiscount, getCouponDiscount } from '../utils/coupons';
+import {
+  validateCoupon,
+  calculateCouponDiscount,
+  getCouponDiscount,
+  getPricingConstants,
+  getProductBySku,
+  subscribeConfig,
+} from '../utils/configClient';
+import { PRODUCTS, hydrateVariant } from '../utils/products';
+import { apiClient } from '../utils/apiClient';
+import { generateOrderId } from '../utils/generateOrderId';
 import Toast from '../components/Toast';
 import './Checkout.css';
 
-const CONFIG = {
-  API_BASE_URL: 'https://api.orangutanorganics.com/api',
-};
+// Backend regex-checks state against this exact list — Title Case, no
+// abbreviations. Keep in sync with the server-side validator.
+const INDIAN_STATES = [
+  'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh',
+  'Goa', 'Gujarat', 'Haryana', 'Himachal Pradesh', 'Jharkhand', 'Karnataka',
+  'Kerala', 'Madhya Pradesh', 'Maharashtra', 'Manipur', 'Meghalaya',
+  'Mizoram', 'Nagaland', 'Odisha', 'Punjab', 'Rajasthan', 'Sikkim',
+  'Tamil Nadu', 'Telangana', 'Tripura', 'Uttar Pradesh', 'Uttarakhand',
+  'West Bengal', 'Andaman and Nicobar Islands', 'Chandigarh',
+  'Dadra and Nagar Haveli and Daman and Diu', 'Delhi', 'Jammu and Kashmir',
+  'Ladakh', 'Lakshadweep', 'Puducherry',
+];
 
 const W = {
   DEEP_FOREST:  '#03605C',
@@ -105,7 +123,8 @@ const scopedStyles = `
     font-weight: 700; color: ${W.DEEP_FOREST};
   }
   .cko-field input,
-  .cko-field textarea {
+  .cko-field textarea,
+  .cko-field select {
     background: ${W.PAPER};
     color: ${W.DEEP_FOREST_DK};
     border: 1.5px solid rgba(3,96,92,0.20);
@@ -116,7 +135,8 @@ const scopedStyles = `
     transition: border-color 180ms ease, background 180ms ease;
   }
   .cko-field input:focus,
-  .cko-field textarea:focus {
+  .cko-field textarea:focus,
+  .cko-field select:focus {
     border-color: ${W.SEAL_TERRACOTTA};
     background: ${W.CREAM};
   }
@@ -340,20 +360,73 @@ function Checkout() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [toast, setToast] = useState(null);
   const [couponCode, setCouponCode] = useState('');
-  const [appliedCoupons, setAppliedCoupons] = useState([]);
+  const [appliedCoupon, setAppliedCoupon] = useState(null);
+  const [, setConfigTick] = useState(0);
+
+  // Overlay backend catalog price + weight onto stored cart items so the
+  // totals sent to /razorpay/create-order match server-side revalidation.
+  const rehydrateCartItem = (item) => {
+    let catalog = null;
+    if (item.product_retailer_id) catalog = getProductBySku(item.product_retailer_id);
+    if (!catalog && item.productId != null) {
+      const product = PRODUCTS.find((p) => p.id === item.productId);
+      const variant = product?.variants.find((v) => v.size === item.size);
+      if (product && variant) {
+        const hv = hydrateVariant(product, variant);
+        return {
+          ...item,
+          price: hv.price,
+          weight: hv.weight,
+          product_retailer_id: hv.sku || item.product_retailer_id,
+        };
+      }
+      return item;
+    }
+    if (catalog) {
+      return {
+        ...item,
+        weight: Number.isFinite(catalog.weight_g) && catalog.weight_g > 0 ? catalog.weight_g : item.weight,
+        price: catalog.verified && Number.isFinite(catalog.price_paise) && catalog.price_paise > 0
+          ? Math.round(catalog.price_paise / 100)
+          : item.price,
+      };
+    }
+    return item;
+  };
+
+  const loadCart = () => {
+    const raw = JSON.parse(localStorage.getItem('cart') || '[]');
+    if (raw.length === 0) {
+      navigate('/cart');
+      return [];
+    }
+    const hydrated = raw.map(rehydrateCartItem);
+    if (JSON.stringify(hydrated) !== JSON.stringify(raw)) {
+      localStorage.setItem('cart', JSON.stringify(hydrated));
+      window.dispatchEvent(new Event('cartUpdated'));
+    }
+    setCart(hydrated);
+    return hydrated;
+  };
 
   useEffect(() => {
-    const cartData = JSON.parse(localStorage.getItem('cart') || '[]');
-    if (cartData.length === 0) {
-      navigate('/cart');
-    }
-    setCart(cartData);
-
+    const cartData = loadCart();
     if (cartData.length > 0) {
       const subtotal = cartData.reduce((sum, item) => sum + (item.price * item.quantity), 0);
       trackInitiateCheckout(cartData, subtotal);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [navigate]);
+
+  // Re-hydrate when /api/config lands mid-session so any refreshed prices
+  // flow into the summary + payload before "Place Order" is clicked.
+  useEffect(() => {
+    return subscribeConfig(() => {
+      setConfigTick((t) => t + 1);
+      loadCart();
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (customerData.pincode && customerData.pincode.length === 6) {
@@ -378,15 +451,16 @@ function Checkout() {
   };
 
   const calculateCouponTotalDiscount = () => {
-    const subtotal = calculateSubtotal();
-    return appliedCoupons.reduce((total, coupon) => {
-      return total + calculateCouponDiscount(subtotal, coupon.code);
-    }, 0);
+    if (!appliedCoupon) return 0;
+    return calculateCouponDiscount(calculateSubtotal(), appliedCoupon.code);
   };
 
   const calculateDiscount = () => {
+    const { bulk_discount_threshold_g, bulk_discount_rate } = getPricingConstants();
     const totalWeight = calculateTotalWeight();
-    const bulkDiscount = totalWeight >= 3000 ? Math.round(calculateSubtotal() * 0.20) : 0;
+    const bulkDiscount = totalWeight >= bulk_discount_threshold_g
+      ? Math.round(calculateSubtotal() * bulk_discount_rate)
+      : 0;
     return bulkDiscount + calculateCouponTotalDiscount();
   };
 
@@ -396,24 +470,23 @@ function Checkout() {
       return;
     }
 
-    if (appliedCoupons.some(c => c.code === couponCode.toUpperCase())) {
-      setToast({ message: 'This coupon is already applied', type: 'error' });
-      return;
-    }
-
     if (validateCoupon(couponCode)) {
       const subtotal = calculateSubtotal();
       const discountAmount = calculateCouponDiscount(subtotal, couponCode);
       const discountPercent = getCouponDiscount(couponCode);
+      const upper = couponCode.toUpperCase();
+      const isReplacement = appliedCoupon && appliedCoupon.code !== upper;
 
-      setAppliedCoupons([...appliedCoupons, {
-        code: couponCode.toUpperCase(),
+      setAppliedCoupon({
+        code: upper,
         amount: discountAmount,
         percent: discountPercent,
-      }]);
+      });
       setCouponCode('');
       setToast({
-        message: `Coupon applied! You saved ₹${discountAmount} (${discountPercent}% off)`,
+        message: isReplacement
+          ? `Coupon replaced with ${upper}. You saved ₹${discountAmount} (${discountPercent}% off)`
+          : `Coupon applied! You saved ₹${discountAmount} (${discountPercent}% off)`,
         type: 'success',
       });
     } else {
@@ -421,8 +494,8 @@ function Checkout() {
     }
   };
 
-  const handleRemoveCoupon = (couponToRemove) => {
-    setAppliedCoupons(appliedCoupons.filter(c => c.code !== couponToRemove));
+  const handleRemoveCoupon = () => {
+    setAppliedCoupon(null);
     setToast({ message: 'Coupon removed', type: 'success' });
   };
 
@@ -435,14 +508,18 @@ function Checkout() {
 
     setIsCalculatingShipping(true);
 
+    const { free_shipping_threshold_paise, cod_charge_paise } = getPricingConstants();
+    const freeShippingThresholdRupees = Math.round(free_shipping_threshold_paise / 100);
+    const codChargeRupees = Math.round(cod_charge_paise / 100);
+
     try {
       const subtotal = calculateSubtotal();
 
-      if (subtotal >= 1000) {
+      if (subtotal >= freeShippingThresholdRupees) {
         setShippingCharge(0);
 
         if (paymentMode === 'cod') {
-          setCodCharge(150);
+          setCodCharge(codChargeRupees);
         } else {
           setCodCharge(0);
         }
@@ -453,7 +530,7 @@ function Checkout() {
 
       const totalWeight = calculateTotalWeight();
 
-      const response = await axios.post(`${CONFIG.API_BASE_URL}/delhivery/calculate-shipping`, {
+      const response = await apiClient.post('/delhivery/calculate-shipping', {
         pincode: customerData.pincode,
         weight: totalWeight,
         paymentMode: paymentMode,
@@ -467,7 +544,7 @@ function Checkout() {
       }
 
       if (paymentMode === 'cod') {
-        setCodCharge(150);
+        setCodCharge(codChargeRupees);
       } else {
         setCodCharge(0);
       }
@@ -479,7 +556,7 @@ function Checkout() {
       setShippingCharge(fallbackCharge);
 
       if (paymentMode === 'cod') {
-        setCodCharge(150);
+        setCodCharge(codChargeRupees);
       } else {
         setCodCharge(0);
       }
@@ -501,7 +578,7 @@ function Checkout() {
       return false;
     }
 
-    if (customerData.pincode.length !== 6) {
+    if (!/^\d{6}$/.test(customerData.pincode)) {
       setToast({ message: 'Please enter a valid 6-digit pincode', type: 'error' });
       return false;
     }
@@ -512,7 +589,41 @@ function Checkout() {
       return false;
     }
 
+    if (!customerData.state || !INDIAN_STATES.includes(customerData.state)) {
+      setToast({ message: 'Please select a valid state', type: 'error' });
+      return false;
+    }
+
     return true;
+  };
+
+  const buildOrderData = (mode, { orderId, subtotal, discount, total }) => {
+    const cleanedPhone = cleanPhoneNumber(customerData.phone);
+    const data = {
+      orderId,
+      timestamp: new Date().toISOString(),
+      name: customerData.name,
+      email: customerData.email,
+      phone: cleanedPhone,
+      address: `${customerData.address1} ${customerData.address2}`.trim(),
+      pincode: String(customerData.pincode),
+      city: customerData.city,
+      state: customerData.state,
+      products: cart.map((item) => ({
+        name: item.name,
+        size: item.size,
+        quantity: item.quantity,
+        price: item.price,
+        ...(item.product_retailer_id ? { sku: item.product_retailer_id } : {}),
+      })),
+      paymentMode: mode,
+      subtotal,
+      shippingCharge,
+      discount,
+      total,
+    };
+    if (appliedCoupon?.code) data.coupon = appliedCoupon.code;
+    return data;
   };
 
   const handleCODOrder = async () => {
@@ -521,7 +632,7 @@ function Checkout() {
     setIsProcessing(true);
 
     try {
-      const orderId = `OUO_${Date.now()}`;
+      const orderId = generateOrderId();
       const totalWeight = calculateTotalWeight();
       const subtotal = calculateSubtotal();
       const discount = calculateDiscount();
@@ -578,39 +689,20 @@ function Checkout() {
         phone: '',
       };
 
-      const orderDataForSheet = {
-        type: 'checkout',
+      const orderData = buildOrderData('COD', {
         orderId,
-        timestamp: new Date().toISOString(),
-        name: customerData.name,
-        email: customerData.email,
-        phone: cleanedPhone,
-        address: `${customerData.address1} ${customerData.address2}`.trim(),
-        pincode: customerData.pincode,
-        city: customerData.city,
-        state: customerData.state,
-        products: cart.map(item => ({
-          name: item.name,
-          size: item.size,
-          quantity: item.quantity,
-          price: item.price,
-        })),
-        paymentMode: 'COD',
-        paymentStatus: 'Pending',
         subtotal,
-        shippingCharge,
-        discountAmount: discount,
-        codCharge,
+        discount,
         total: totalAmount,
-      };
+      });
 
       try {
         console.log('Processing COD order via backend...');
 
-        const response = await axios.post(`${CONFIG.API_BASE_URL}/checkout/process-cod`, {
-          orderData: orderDataForSheet,
-          shipmentData: shipmentData,
-          pickupLocation: pickupLocation,
+        const response = await apiClient.post('/checkout/process-cod', {
+          orderData,
+          shipmentData,
+          pickupLocation,
         });
 
         console.log('✅ COD order processed successfully:', response.data);
@@ -656,26 +748,59 @@ function Checkout() {
     setIsProcessing(true);
 
     try {
-      const orderId = `OUO_${Date.now()}`;
+      const orderId = generateOrderId();
       const totalAmount = calculateTotal();
       const subtotal = calculateSubtotal();
       const discount = calculateDiscount();
       const totalWeight = calculateTotalWeight();
 
+      const orderDataForCreate = buildOrderData('Prepaid', {
+        orderId,
+        subtotal,
+        discount,
+        total: totalAmount,
+      });
+
       console.log('Creating Razorpay order via backend...');
 
-      const orderResponse = await axios.post(`${CONFIG.API_BASE_URL}/razorpay/create-order`, {
+      const orderResponse = await apiClient.post('/razorpay/create-order', {
         amount: totalAmount * 100,
         currency: 'INR',
         receipt: orderId,
+        orderId,
+        ...(appliedCoupon?.code ? { couponCode: appliedCoupon.code } : {}),
+        orderData: orderDataForCreate,
+        items: cart.map((item) => ({
+          name: item.name,
+          size: item.size,
+          quantity: item.quantity,
+          ...(item.product_retailer_id ? { sku: item.product_retailer_id } : {}),
+        })),
+        shippingChargePaise: shippingCharge * 100,
+        paymentMode: 'prepaid',
       });
 
-      if (!orderResponse.data.success) {
+      if (!orderResponse.data.success && !orderResponse.data.ok) {
         throw new Error('Failed to create Razorpay order');
       }
 
-      const razorpayOrder = orderResponse.data.order;
-      const razorpayKeyId = orderResponse.data.key_id;
+      const envelope = orderResponse.data?.data || orderResponse.data;
+      const razorpayOrder = envelope.order || orderResponse.data.order;
+      const razorpayKeyId = envelope.key_id || orderResponse.data.key_id;
+      const fulfillmentToken =
+        envelope.fulfillmentToken || orderResponse.data.fulfillmentToken;
+
+      // Server-authoritative total. Backend may have re-priced the cart if any
+      // SKU price drifted from the local catalog. Trust it — Razorpay will
+      // charge this amount, so orderData.total must match or /process-prepaid
+      // will 400 in strict input-validation mode.
+      const serverTotalRupees = Math.round((razorpayOrder.amount ?? totalAmount * 100) / 100);
+      const authoritativeTotal = serverTotalRupees;
+      if (Math.abs(serverTotalRupees - totalAmount) > 1) {
+        console.warn(
+          `[create-order] server re-priced total ₹${totalAmount} → ₹${serverTotalRupees} (diff ₹${serverTotalRupees - totalAmount})`
+        );
+      }
 
       console.log('✅ Razorpay order created:', razorpayOrder.id);
 
@@ -696,10 +821,12 @@ function Checkout() {
             console.log('✅ Payment successful, verifying...');
 
             try {
-              const verifyResponse = await axios.post(`${CONFIG.API_BASE_URL}/razorpay/verify-payment`, {
+              const verifyResponse = await apiClient.post('/razorpay/verify-payment', {
+                orderId,
                 razorpay_order_id: response.razorpay_order_id,
                 razorpay_payment_id: response.razorpay_payment_id,
                 razorpay_signature: response.razorpay_signature,
+                fulfillmentToken,
               });
 
               if (!verifyResponse.data.verified) {
@@ -729,7 +856,7 @@ function Checkout() {
                 payment_mode: 'Prepaid',
                 products_desc: productsDesc,
                 cod_amount: '0',
-                total_amount: String(totalAmount),
+                total_amount: String(authoritativeTotal),
                 weight: totalWeight,
                 shipping_mode: 'Surface',
               };
@@ -739,40 +866,22 @@ function Checkout() {
                 pin: '249135',
               };
 
-              const orderDataForSheet = {
-                type: 'checkout',
+              const orderData = buildOrderData('Prepaid', {
                 orderId,
-                timestamp: new Date().toISOString(),
-                name: customerData.name,
-                email: customerData.email,
-                phone: cleanedPhone,
-                address: `${customerData.address1} ${customerData.address2}`.trim(),
-                pincode: customerData.pincode,
-                city: customerData.city,
-                state: customerData.state,
-                products: cart.map(item => ({
-                  name: item.name,
-                  size: item.size,
-                  quantity: item.quantity,
-                  price: item.price,
-                })),
-                paymentMode: 'Prepaid',
-                paymentStatus: 'Completed',
                 subtotal,
-                shippingCharge,
-                discountAmount: discount,
-                codCharge: 0,
-                total: totalAmount,
-              };
+                discount,
+                total: authoritativeTotal,
+              });
 
-              const processResponse = await axios.post(`${CONFIG.API_BASE_URL}/checkout/process-prepaid`, {
-                orderData: orderDataForSheet,
-                shipmentData: shipmentData,
-                pickupLocation: pickupLocation,
+              const processResponse = await apiClient.post('/checkout/process-prepaid', {
+                orderData,
+                shipmentData,
+                pickupLocation,
                 paymentDetails: {
                   payment_id: response.razorpay_payment_id,
                   order_id: response.razorpay_order_id,
                 },
+                fulfillmentToken,
               });
 
               console.log('✅ Order processed successfully:', processResponse.data);
@@ -780,14 +889,14 @@ function Checkout() {
               trackPurchase({
                 orderId,
                 products: cart,
-                total: totalAmount,
+                total: authoritativeTotal,
               });
 
               localStorage.removeItem('cart');
               window.dispatchEvent(new Event('cartUpdated'));
 
               setToast({
-                message: `Payment successful!\n\nOrder ID: ${orderId}\nTotal: ₹${totalAmount}\n\nYou will receive a confirmation email shortly.`,
+                message: `Payment successful!\n\nOrder ID: ${orderId}\nTotal: ₹${authoritativeTotal}\n\nYou will receive a confirmation email shortly.`,
                 type: 'success',
                 duration: 5000,
               });
@@ -852,8 +961,10 @@ function Checkout() {
 
   const subtotal = calculateSubtotal();
   const total = calculateTotal();
-  const bulkQualifies = calculateTotalWeight() >= 3000;
-  const bulkDiscountAmount = bulkQualifies ? Math.round(subtotal * 0.20) : 0;
+  const { bulk_discount_threshold_g: bulkThreshold, bulk_discount_rate: bulkRate } = getPricingConstants();
+  const bulkQualifies = calculateTotalWeight() >= bulkThreshold;
+  const bulkDiscountAmount = bulkQualifies ? Math.round(subtotal * bulkRate) : 0;
+  const bulkDiscountLabel = `${Math.round(bulkRate * 100)}%`;
 
   return (
     <div className="cko">
@@ -954,6 +1065,8 @@ function Checkout() {
                       type="text"
                       id="pincode"
                       name="pincode"
+                      inputMode="numeric"
+                      pattern="[0-9]{6}"
                       value={customerData.pincode}
                       onChange={handleInputChange}
                       placeholder="6-digit pincode"
@@ -972,14 +1085,19 @@ function Checkout() {
                     />
                   </div>
                   <div className="cko-field">
-                    <label htmlFor="state">State</label>
-                    <input
-                      type="text"
+                    <label htmlFor="state">State *</label>
+                    <select
                       id="state"
                       name="state"
                       value={customerData.state}
                       onChange={handleInputChange}
-                    />
+                      required
+                    >
+                      <option value="">Select state…</option>
+                      {INDIAN_STATES.map((s) => (
+                        <option key={s} value={s}>{s}</option>
+                      ))}
+                    </select>
                   </div>
                 </div>
               </section>
@@ -1055,22 +1173,20 @@ function Checkout() {
                   </button>
                 </div>
 
-                {appliedCoupons.length > 0 && (
+                {appliedCoupon && (
                   <div className="cko-coupon__list">
-                    {appliedCoupons.map((coupon, index) => (
-                      <div key={index} className="cko-coupon-chip">
-                        <span className="cko-coupon-chip__code">🎉 {coupon.code}</span>
-                        <span className="cko-coupon-chip__save">−₹{coupon.amount}</span>
-                        <button
-                          type="button"
-                          className="cko-coupon-chip__rm"
-                          onClick={() => handleRemoveCoupon(coupon.code)}
-                          aria-label={`Remove ${coupon.code}`}
-                        >
-                          ×
-                        </button>
-                      </div>
-                    ))}
+                    <div className="cko-coupon-chip">
+                      <span className="cko-coupon-chip__code">🎉 {appliedCoupon.code}</span>
+                      <span className="cko-coupon-chip__save">−₹{appliedCoupon.amount}</span>
+                      <button
+                        type="button"
+                        className="cko-coupon-chip__rm"
+                        onClick={handleRemoveCoupon}
+                        aria-label={`Remove ${appliedCoupon.code}`}
+                      >
+                        ×
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
@@ -1083,17 +1199,17 @@ function Checkout() {
 
                 {bulkQualifies && (
                   <div className="cko-calc__row cko-calc__row--save">
-                    <span>Bulk Discount (20% OFF)</span>
+                    <span>Bulk Discount ({bulkDiscountLabel} OFF)</span>
                     <span>−₹{bulkDiscountAmount}</span>
                   </div>
                 )}
 
-                {appliedCoupons.map((coupon, index) => (
-                  <div key={index} className="cko-calc__row cko-calc__row--save">
-                    <span>Coupon ({coupon.code})</span>
-                    <span>−₹{coupon.amount}</span>
+                {appliedCoupon && (
+                  <div className="cko-calc__row cko-calc__row--save">
+                    <span>Coupon ({appliedCoupon.code})</span>
+                    <span>−₹{appliedCoupon.amount}</span>
                   </div>
-                ))}
+                )}
 
                 {isCalculatingShipping ? (
                   <div className="cko-calc__row cko-calc__row--muted">

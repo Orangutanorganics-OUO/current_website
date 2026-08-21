@@ -1,3 +1,20 @@
+// Product catalog — display metadata (name, description, images, features)
+// lives here; server-authoritative price + weight come from /api/config via
+// configClient.getProductBySku(). Every variant carries a `sku` field that
+// matches the WhatsApp retailer_id used in the backend catalog (shared/catalog.js).
+//
+// Hydration precedence:
+//   - price_paise: backend if verified && >0, else local `price` (₹).
+//   - weight_g:    backend if present, else local `weight`.
+//   - `verified`:  backend flag, propagated so the UI can hide unverified SKUs
+//                  when PRICING_ENFORCEMENT_MODE goes strict.
+//
+// Local `price` / `weight` remain the fallback so the site works before the
+// /api/config response lands (first-paint, offline reload) and for variants
+// the backend doesn't yet know about (e.g. Spice 23gm).
+
+import { getProductBySku, getProductByNameSize } from './configClient';
+
 export const PRODUCTS = [
   {
     id: 1,
@@ -26,8 +43,8 @@ export const PRODUCTS = [
       "https://raw.githubusercontent.com/Orangutanorganics-OUO/image_repo/refs/heads/main/White_Rajma/wr_5.png"
     ],
     variants: [
-      { size: "500gm", price: 347, stock: 100, weight: 500, available: true },
-      { size: "1kg", price: 691, stock: 100, weight: 1000, available: true }
+      { sku: "m519x5gv9s", size: "500gm", price: 347, stock: 100, weight: 500, available: true },
+      { sku: "294l11gpcm", size: "1kg",   price: 691, stock: 100, weight: 1000, available: true }
     ],
     benefits: ["High Protein", "Rich in Fiber", "Organic", "Himalayan Sourced"]
   },
@@ -57,8 +74,8 @@ export const PRODUCTS = [
       "https://raw.githubusercontent.com/Orangutanorganics-OUO/image_repo/refs/heads/main/Red_Rajma/rrj_4.png"
     ],
     variants: [
-      { size: "500gm", price: 347, stock: 100, weight: 500, available: true },
-      { size: "1kg", price: 691, stock: 100, weight: 1000, available: true }
+      { sku: "ezg1lu6edm", size: "500gm", price: 347, stock: 100, weight: 500, available: true },
+      { sku: "tzz72lpzz2", size: "1kg",   price: 691, stock: 100, weight: 1000, available: true }
     ],
     benefits: ["High Protein", "Rich in Iron", "Organic", "Traditional Taste"]
   },
@@ -89,9 +106,9 @@ export const PRODUCTS = [
       "https://raw.githubusercontent.com/Orangutanorganics-OUO/image_repo/refs/heads/main/Ghee/g_4.png",
     ],
     variants: [
-      { size: "120gm", price: 450, stock: 50, weight: 120, available: true },
-      { size: "295gm", price: 1067, stock: 50, weight: 295, available: true },
-      { size: "495gm", price: 1795, stock: 50, weight: 495, available: true }
+      { sku: "43mypu8dye", size: "120gm", price: 450,  stock: 50, weight: 120, available: true },
+      { sku: "l722c63kq9", size: "295gm", price: 1067, stock: 50, weight: 295, available: true },
+      { sku: "kkii6r9uvh", size: "495gm", price: 1795, stock: 50, weight: 495, available: true }
     ],
     benefits: ["A2 Ghee", "Bilona Method", "Pure & Natural", "Himalayan"]
   },
@@ -119,8 +136,8 @@ export const PRODUCTS = [
       "https://raw.githubusercontent.com/Orangutanorganics-OUO/image_repo/refs/heads/main/Black_Soybean/bs_2.png"
     ],
     variants: [
-      { size: "500gm", price: 347, stock: 100, weight: 500, available: true },
-      { size: "1kg", price: 691, stock: 100, weight: 1000, available: true }
+      { sku: "5diu7mcmbf", size: "500gm", price: 347, stock: 100, weight: 500, available: true },
+      { sku: "324pmzr4c9", size: "1kg",   price: 691, stock: 100, weight: 1000, available: true }
     ],
     benefits: ["High Protein", "Antioxidants", "Organic", "Rare Variety"]
   },
@@ -149,7 +166,7 @@ export const PRODUCTS = [
       "https://raw.githubusercontent.com/Orangutanorganics-OUO/image_repo/refs/heads/main/Red_Rice/rr_3.png"
     ],
     variants: [
-      { size: "1kg", price: 347, stock: 100, weight: 1000, available: true }
+      { sku: "obdqyehm1w", size: "1kg", price: 347, stock: 100, weight: 1000, available: true }
     ],
     benefits: ["High Fiber", "Antioxidants", "Organic", "Nutty Flavor"]
   },
@@ -180,13 +197,87 @@ export const PRODUCTS = [
       "https://raw.githubusercontent.com/Orangutanorganics-OUO/image_repo/refs/heads/main/Laadu/ts_4.png"
     ],
     variants: [
-      { size: "23gm", price: 347, stock: 60, weight: 23, available: true }
+      // Backend catalog has this SKU as 100gm; the 23gm variant sold here is
+      // NOT in the backend. Backend must be updated (see suggestions).
+      { sku: null, size: "23gm", price: 347, stock: 60, weight: 23, available: true }
     ],
     benefits: ["Wild Harvested", "Unique Flavor", "Traditional", "Premium Quality"]
   }
 ];
 
-// Helper functions for product lookups
+// ============================================================================
+// HYDRATION — overlay backend catalog price + weight onto a local variant
+// ============================================================================
+
+/**
+ * Merge backend catalog data (from configClient) onto a local variant.
+ * Precedence: backend wins for price if verified && price_paise > 0; otherwise
+ * local price is kept. Weight follows the same "backend if present" rule.
+ * Always returns a shape usable by Cart / Checkout / Products UI.
+ *
+ * @returns {{
+ *   sku: string|null,
+ *   size: string,
+ *   price: number,       // rupees, integer
+ *   weight: number,      // grams, integer
+ *   available: boolean,
+ *   verified: boolean,   // backend-verified price?
+ *   catalogHit: boolean, // did we find the SKU in the backend catalog?
+ *   stock: number,
+ * }}
+ */
+export function hydrateVariant(product, variant) {
+  const catalog =
+    (variant.sku && getProductBySku(variant.sku)) ||
+    getProductByNameSize(product.name, variant.size);
+
+  let price = variant.price;
+  let weight = variant.weight;
+  let verified = false;
+  let catalogHit = false;
+  let sku = variant.sku || null;
+
+  if (catalog) {
+    catalogHit = true;
+    verified = catalog.verified === true;
+    if (!sku && catalog.sku) sku = catalog.sku;
+
+    if (Number.isFinite(catalog.weight_g) && catalog.weight_g > 0) {
+      weight = catalog.weight_g;
+    }
+    // Only trust backend price when the entry is verified AND non-zero. An
+    // unverified/zero backend row is a placeholder — fall through to local.
+    if (verified && Number.isFinite(catalog.price_paise) && catalog.price_paise > 0) {
+      price = Math.round(catalog.price_paise / 100);
+    }
+  }
+
+  return {
+    sku,
+    size: variant.size,
+    price,
+    weight,
+    available: variant.available !== false,
+    verified,
+    catalogHit,
+    stock: variant.stock,
+  };
+}
+
+export function hydrateProduct(product) {
+  return {
+    ...product,
+    variants: product.variants.map((v) => hydrateVariant(product, v)),
+  };
+}
+
+// ============================================================================
+// LEGACY LOOKUP HELPERS
+// ============================================================================
+// These use local `variant.price` / `variant.weight` — kept for backwards
+// compatibility with any code path that hasn't migrated to hydrateVariant().
+// Prefer hydrateVariant() for anything price/weight-sensitive.
+
 export const getProductById = (id) => {
   return PRODUCTS.find(p => p.id === parseInt(id));
 };

@@ -1,5 +1,5 @@
 // Google Sheets API configuration
-const SHEET_ID = process.env.REACT_APP_GOOGLE_SHEET_ID || '1lFlOV7SN_N3URnaUOt4d8imxK2UhyrTb1lfquivadQI';
+const SHEET_ID = process.env.REACT_APP_GOOGLE_SHEET_ID;
 const SHEET_NAME = 'Reviews';
 // Note: This requires the Google Sheet to be publicly accessible (Link sharing: Anyone with the link can view)
 

@@ -20,6 +20,7 @@ import Nutrition from './pages/Nutrition';
 import Matters from './pages/Matters';
 import Faq from './pages/Faq';
 import RuralReaps from './pages/RuralReaps';
+import { initConfig } from './utils/configClient';
 import './App.css';
 
 function App() {
@@ -34,6 +35,15 @@ function App() {
     return () => {
       window.removeEventListener('cartUpdated', updateCartCount);
     };
+  }, []);
+
+  useEffect(() => {
+    initConfig();
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') initConfig();
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => document.removeEventListener('visibilitychange', onVisibility);
   }, []);
 
   // ---- Smooth scroll (Lenis) ------------------------------------------
